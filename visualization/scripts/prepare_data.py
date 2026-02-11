@@ -847,21 +847,24 @@ def main():
         })
     referendum_correlation.sort(key=lambda x: x['agreePercent'], reverse=True)
 
-    # ===== ENSEMBLE SUSPICION SCORE V3 =====
-    # V3 Improvements over V2:
-    # 1. Spoiled Ballot Ratio feature
-    # 2. Winner Dominance (HHI-based) feature
-    # 3. Entropy Weight Method (data-driven weights instead of hardcoded)
-    # 4. Permutation Test (retained from V2)
-    # 5. Spatial Analysis (Moran's I) for geographic clustering
-    # 6. Semi-supervised pseudo-labels from extreme cases
+    # ═══════════════════════════════════════════════════════════════
+    # ── ENSEMBLE SUSPICION SCORE ──
+    # Combines 10 statistical indicators to produce a suspicion score
+    # per constituency. Weights are data-driven (Entropy Weight Method).
+    # Components:
+    #  1. MP-PL Gap          6. Spoiled Ballot Ratio
+    #  2. PL Deviation       7. Winner Dominance (HHI)
+    #  3. Turnout Anomaly    8. No-Vote Ratio
+    #  4. Competition        9. Voters per Station
+    #  5. Consistency       10. Benford's Law (1st-digit)
+    # ═══════════════════════════════════════════════════════════════
     import statistics as stat_module
     import random as rng_module
     import math
     import bisect
     rng_module.seed(42)  # Reproducible results
 
-    print("  🧪 Building Ensemble V3...")
+    print("  🧪 Building Ensemble Model...")
 
     def robust_z_score(value, values_list):
         """Compute Robust Z-Score using Median and IQR instead of Mean/StdDev."""
@@ -1106,7 +1109,7 @@ def main():
         rz = robust_z_score(dominance_scores[ac]['hhi'], all_hhi)
         dominance_scores[ac]['scaledScore'] = max(0, min(100, rz * 20))
 
-    # ── Component 8 (NEW V4): No-Vote Ratio (from Referendum) ──
+    # ── Component 8: No-Vote Ratio (from Referendum) ──
     # Voters who came but did not cast a vote (noVotes/noVotePercent)
     # High no-vote ratio combined with other signals could indicate coercion or confusion
     novote_scores = {}
@@ -1123,7 +1126,7 @@ def main():
         rz = robust_z_score(novote_scores[ac]['ratio'], all_novote_ratios)
         novote_scores[ac]['scaledScore'] = max(0, min(100, rz * 20))
 
-    # ── Component 9 (NEW V4): Voters per Station ──
+    # ── Component 9: Voters per Station ──
     # Areas with very high voters/station → harder to monitor → easier to cheat
     # Areas with very low voters/station → tiny rural areas with different dynamics
     # Extreme deviation from median is the signal
@@ -1143,6 +1146,402 @@ def main():
         # Use absolute z-score: both extremely high AND low are anomalous
         vps_scores[ac]['scaledScore'] = max(0, min(100, abs(rz) * 20))
 
+    # ── Component 10: Benford's Law Analysis (1st-Digit) ──
+    # Benford's Law: In naturally occurring datasets, the first digit follows
+    # a specific distribution: P(d) = log10(1 + 1/d)
+    # Digit 1 appears ~30.1%, digit 2 ~17.6%, ..., digit 9 ~4.6%
+    # If vote counts deviate significantly from this → potential manipulation
+    # We apply per-area Chi-square goodness-of-fit test
+    print("  📐 Computing Benford's Law Analysis...")
+
+    BENFORD_EXPECTED = {d: math.log10(1 + 1/d) for d in range(1, 10)}
+
+    def first_digit(n):
+        """Extract the first digit of a positive integer."""
+        if n <= 0:
+            return None
+        while n >= 10:
+            n //= 10
+        return n
+
+    def chi_square_benford(digit_counts, total_count):
+        """Compute Chi-square statistic for Benford's Law goodness-of-fit.
+        Returns (chi2, p_value_approx) using simplified p-value estimation."""
+        if total_count < 10:
+            return 0.0, 1.0
+        chi2 = 0.0
+        for d in range(1, 10):
+            observed = digit_counts.get(d, 0)
+            expected = BENFORD_EXPECTED[d] * total_count
+            if expected > 0:
+                chi2 += (observed - expected) ** 2 / expected
+        # Degrees of freedom = 8 (9 digits - 1)
+        # Approximate p-value using Wilson-Hilferty transformation
+        df = 8
+        if chi2 <= 0:
+            return 0.0, 1.0
+        # Normalized chi-square → approximate z-score
+        z = ((chi2 / df) ** (1/3) - (1 - 2/(9*df))) / math.sqrt(2/(9*df))
+        # Convert z to p-value using logistic approximation of normal CDF
+        p_approx = 1.0 / (1.0 + math.exp(1.7 * z))
+        return round(chi2, 3), round(max(0, min(1, p_approx)), 4)
+
+    # Collect first digits from all vote counts in each area (MP + PL)
+    benford_scores = {}
+    all_benford_chi2 = []
+    # Also collect global digit distribution
+    global_digit_counts = {d: 0 for d in range(1, 10)}
+    global_total = 0
+
+    for mp_file in mp_files:
+        area_code = os.path.basename(mp_file).replace('.json', '')
+        pl_file = os.path.join(PL_DIR, f'{area_code}.json')
+        if not os.path.exists(pl_file):
+            continue
+
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_data_b = json.load(f)
+        with open(pl_file, 'r', encoding='utf-8') as f:
+            pl_data_b = json.load(f)
+
+        # Collect all vote counts for this area
+        area_votes = []
+        for entry in mp_data_b.get('entries', []):
+            v = entry.get('voteTotal', 0)
+            if v > 0:
+                area_votes.append(v)
+        for entry in pl_data_b.get('entries', []):
+            v = entry.get('voteTotal', 0)
+            if v > 0:
+                area_votes.append(v)
+
+        if len(area_votes) < 10:
+            # Not enough data points for reliable Benford analysis
+            benford_scores[area_code] = {
+                'chi2': 0.0,
+                'pValue': 1.0,
+                'digitCounts': {d: 0 for d in range(1, 10)},
+                'totalNumbers': 0,
+                'scaledScore': 0,
+            }
+            continue
+
+        # Count first digits
+        digit_counts = {d: 0 for d in range(1, 10)}
+        for v in area_votes:
+            fd = first_digit(v)
+            if fd is not None and 1 <= fd <= 9:
+                digit_counts[fd] += 1
+                global_digit_counts[fd] += 1
+                global_total += 1
+
+        total_numbers = sum(digit_counts.values())
+        chi2, p_val = chi_square_benford(digit_counts, total_numbers)
+        all_benford_chi2.append(chi2)
+
+        benford_scores[area_code] = {
+            'chi2': chi2,
+            'pValue': p_val,
+            'digitCounts': digit_counts,
+            'totalNumbers': total_numbers,
+            'scaledScore': 0,  # Will be computed after collecting all
+        }
+
+    # Scale chi2 to 0-100 using robust z-score
+    if all_benford_chi2:
+        for ac in benford_scores:
+            if benford_scores[ac]['totalNumbers'] >= 10:
+                rz = robust_z_score(benford_scores[ac]['chi2'], all_benford_chi2)
+                benford_scores[ac]['scaledScore'] = max(0, min(100, rz * 20))
+
+    # Compute global Benford distribution for frontend display
+    global_benford_distribution = []
+    for d in range(1, 10):
+        expected_pct = BENFORD_EXPECTED[d] * 100
+        observed_pct = (global_digit_counts[d] / global_total * 100) if global_total > 0 else 0
+        global_benford_distribution.append({
+            'digit': d,
+            'expected': round(expected_pct, 2),
+            'observed': round(observed_pct, 2),
+            'count': global_digit_counts[d],
+        })
+
+    # Compute global chi-square
+    global_chi2, global_benford_p = chi_square_benford(global_digit_counts, global_total)
+
+    benford_conform = sum(1 for b in benford_scores.values() if b['pValue'] > 0.05)
+    benford_deviate = sum(1 for b in benford_scores.values() if b['pValue'] <= 0.05 and b['totalNumbers'] >= 10)
+    print(f"  📐 Benford: conform={benford_conform}, deviate(p≤0.05)={benford_deviate}")
+    print(f"  📐 Global χ²={global_chi2}, p={global_benford_p}, total numbers={global_total}")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ── Monte Carlo Null Model: Twin-Number Effect Statistical Validation ──
+    # ═══════════════════════════════════════════════════════════════════════
+    # Question: "Is the observed twin-number pattern (candidate number j wins →
+    #            PL party j gets boosted votes) statistically implausible?"
+    #
+    # Approach:
+    #   1. Compute OBSERVED lift per number j:
+    #      lift_j = mean(PL share of party j in areas where winner number == j)
+    #              - national PL share of party j
+    #   2. Monte Carlo null model (500 iterations):
+    #      - Shuffle winner numbers randomly across areas
+    #      - Re-compute lift under random assignment
+    #      - Build null distribution of max|z| across all 20 numbers
+    #   3. Compare observed z-scores against null distribution
+    #   4. Apply Bonferroni correction for 20 simultaneous tests:
+    #      α_corrected = 0.05/20 = 0.0025, critical |z| ≈ 3.29
+    #   5. Structural bias analysis: show how group size n affects SE and z
+    # ═══════════════════════════════════════════════════════════════════════
+    print("  🎲 Running Monte Carlo Null Model (Twin-Number Effect)...")
+
+    N_MC_ITERATIONS = 500
+    MAX_PARTY_NUM = 20  # Test party numbers 1-20 (covers all major parties)
+
+    # Step 1: Collect observed data per area
+    # For each area: winner candidate number, PL vote shares for each party
+    area_twin_data = []  # list of {winnerNum, plShares: {partyNum: voteShare}}
+    national_pl_totals = {}  # partyNum -> total PL votes nationally
+    national_pl_total_all = 0
+
+    for mp_file in mp_files:
+        ac = os.path.basename(mp_file).replace('.json', '')
+        pl_file_path = os.path.join(PL_DIR, f'{ac}.json')
+        if not os.path.exists(pl_file_path):
+            continue
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_raw = json.load(f)
+        with open(pl_file_path, 'r', encoding='utf-8') as f:
+            pl_raw = json.load(f)
+
+        winner = next((e for e in mp_raw['entries'] if e['rank'] == 1), None)
+        if not winner:
+            continue
+        winner_num = int(winner['candidateCode'][-2:])
+
+        # PL vote shares for this area
+        total_pl_area = sum(e['voteTotal'] for e in pl_raw['entries'])
+        if total_pl_area == 0:
+            continue
+
+        pl_shares = {}
+        for e in pl_raw['entries']:
+            pnum = get_party_num(e['partyCode'])
+            if 1 <= pnum <= MAX_PARTY_NUM:
+                pl_shares[pnum] = e['voteTotal'] / total_pl_area
+                if pnum not in national_pl_totals:
+                    national_pl_totals[pnum] = 0
+                national_pl_totals[pnum] += e['voteTotal']
+                national_pl_total_all += e['voteTotal']
+
+        area_twin_data.append({
+            'areaCode': ac,
+            'winnerNum': winner_num,
+            'plShares': pl_shares,
+            'totalPlVotes': total_pl_area,
+        })
+
+    n_areas_mc = len(area_twin_data)
+
+    # National PL share for each party (baseline)
+    national_pl_share = {}
+    for pnum in range(1, MAX_PARTY_NUM + 1):
+        national_pl_share[pnum] = national_pl_totals.get(pnum, 0) / national_pl_total_all if national_pl_total_all > 0 else 0
+
+    # Step 2: Compute OBSERVED lift and z-score for each number j
+    def compute_lift_z(twin_data, winner_nums=None):
+        """Compute lift and z-score for each party number j.
+        If winner_nums is provided, use those instead of actual winner numbers.
+        Returns: {j: {'lift': float, 'z': float, 'n': int, 'mean_share': float, 'se': float}}
+        """
+        results = {}
+        for j in range(1, MAX_PARTY_NUM + 1):
+            # Collect PL share of party j in areas where winner number == j
+            shares_in_group = []
+            for i, ad in enumerate(twin_data):
+                wn = winner_nums[i] if winner_nums else ad['winnerNum']
+                if wn == j:
+                    shares_in_group.append(ad['plShares'].get(j, 0))
+
+            n = len(shares_in_group)
+            if n < 2:
+                results[j] = {'lift': 0.0, 'z': 0.0, 'n': n, 'meanShare': 0.0, 'se': 0.0}
+                continue
+
+            p_national = national_pl_share.get(j, 0)
+            mean_share = sum(shares_in_group) / n
+            lift = mean_share - p_national
+
+            # Standard error: SE ≈ sqrt(p(1-p)/n) where p is national share
+            se = math.sqrt(p_national * (1 - p_national) / n) if p_national > 0 and p_national < 1 else 0
+            z = lift / se if se > 0 else 0.0
+
+            results[j] = {
+                'lift': lift,
+                'z': z,
+                'n': n,
+                'meanShare': mean_share,
+                'se': se,
+            }
+        return results
+
+    # Observed results
+    observed_results = compute_lift_z(area_twin_data)
+    observed_max_abs_z = max(abs(r['z']) for r in observed_results.values()) if observed_results else 0
+
+    # Step 3: Monte Carlo simulation — shuffle winner numbers
+    null_max_abs_z_dist = []  # Distribution of max|z| under null
+    # Also track per-number null z-score distributions for comparison
+    null_z_by_number = {j: [] for j in range(1, MAX_PARTY_NUM + 1)}
+
+    all_winner_nums = [ad['winnerNum'] for ad in area_twin_data]
+
+    for mc_iter in range(N_MC_ITERATIONS):
+        # Shuffle winner numbers randomly across areas
+        shuffled_nums = list(all_winner_nums)
+        rng_module.shuffle(shuffled_nums)
+
+        # Compute lift/z under shuffled assignment
+        null_results = compute_lift_z(area_twin_data, winner_nums=shuffled_nums)
+
+        # Track max|z| for this iteration
+        max_abs_z_iter = max(abs(r['z']) for r in null_results.values()) if null_results else 0
+        null_max_abs_z_dist.append(max_abs_z_iter)
+
+        # Track per-number z-scores
+        for j in range(1, MAX_PARTY_NUM + 1):
+            null_z_by_number[j].append(null_results[j]['z'])
+
+        if (mc_iter + 1) % 100 == 0:
+            print(f"    🎲 MC iteration {mc_iter + 1}/{N_MC_ITERATIONS}")
+
+    null_max_abs_z_dist.sort()
+
+    # Step 4: Compute p-values
+    # Per-number p-value: fraction of null iterations where |z_null| >= |z_observed|
+    # Also compute MC-corrected p-value using max|z| distribution
+    mc_p_value_global = sum(1 for nz in null_max_abs_z_dist if nz >= observed_max_abs_z) / N_MC_ITERATIONS
+
+    # Bonferroni correction thresholds
+    bonferroni_alpha = 0.05 / MAX_PARTY_NUM  # 0.0025
+    bonferroni_z_critical = 3.29  # |z| for α/2 = 0.00125 (two-tailed)
+
+    # Per-number results with p-values
+    null_model_per_number = []
+    significant_numbers = []
+    for j in range(1, MAX_PARTY_NUM + 1):
+        obs = observed_results[j]
+        null_zs = null_z_by_number[j]
+
+        # Two-tailed p-value from null distribution
+        if null_zs:
+            p_mc = sum(1 for nz in null_zs if abs(nz) >= abs(obs['z'])) / len(null_zs)
+        else:
+            p_mc = 1.0
+
+        # Bonferroni significance
+        is_bonferroni_sig = abs(obs['z']) >= bonferroni_z_critical and p_mc <= bonferroni_alpha
+
+        party_id = f'PARTY-{str(j).zfill(4)}'
+        result = {
+            'number': j,
+            'partyName': get_party_name(party_id),
+            'partyColor': get_party_color(party_id),
+            'n': obs['n'],  # group size (areas where winner number == j)
+            'nationalShare': round(national_pl_share.get(j, 0) * 100, 4),
+            'observedMeanShare': round(obs['meanShare'] * 100, 4),
+            'lift': round(obs['lift'] * 100, 4),  # In percentage points
+            'liftPercent': round(obs['lift'] / national_pl_share.get(j, 1) * 100, 2) if national_pl_share.get(j, 0) > 0 else 0,  # Relative lift %
+            'se': round(obs['se'] * 100, 4),
+            'zScore': round(obs['z'], 3),
+            'absZ': round(abs(obs['z']), 3),
+            'pValueMC': round(p_mc, 4),
+            'isBonferroniSig': is_bonferroni_sig,
+            # Null distribution stats for this number
+            'nullZMean': round(sum(null_zs) / len(null_zs), 3) if null_zs else 0,
+            'nullZStd': round(stat_module.stdev(null_zs), 3) if len(null_zs) > 1 else 0,
+        }
+        null_model_per_number.append(result)
+        if is_bonferroni_sig:
+            significant_numbers.append(j)
+
+    null_model_per_number.sort(key=lambda x: -x['absZ'])
+
+    # Step 5: Max|z| histogram data (for frontend)
+    # Bin the null distribution of max|z| into histogram bins
+    max_z_hist_bins = 30
+    if null_max_abs_z_dist:
+        hist_min = 0
+        hist_max = max(max(null_max_abs_z_dist), observed_max_abs_z) * 1.1
+        bin_width = (hist_max - hist_min) / max_z_hist_bins
+        max_z_histogram = []
+        for b in range(max_z_hist_bins):
+            lo = hist_min + b * bin_width
+            hi = lo + bin_width
+            count = sum(1 for v in null_max_abs_z_dist if lo <= v < hi)
+            max_z_histogram.append({
+                'binStart': round(lo, 2),
+                'binEnd': round(hi, 2),
+                'binMid': round((lo + hi) / 2, 2),
+                'count': count,
+                'density': round(count / N_MC_ITERATIONS, 4),
+            })
+    else:
+        max_z_histogram = []
+
+    # Step 6: Structural Bias Analysis
+    # Show how group size n (number of areas where winner number == j)
+    # affects SE and thus |z|. Large parties that field many candidates
+    # naturally have more areas → smaller SE → inflated |z|
+    structural_bias = []
+    for j in range(1, MAX_PARTY_NUM + 1):
+        obs = observed_results[j]
+        p_j = national_pl_share.get(j, 0)
+        structural_bias.append({
+            'number': j,
+            'partyName': get_party_name(f'PARTY-{str(j).zfill(4)}'),
+            'partyColor': get_party_color(f'PARTY-{str(j).zfill(4)}'),
+            'n': obs['n'],
+            'se': round(obs['se'] * 100, 4),
+            'absZ': round(abs(obs['z']), 3),
+            'nationalSharePct': round(p_j * 100, 4),
+            'lift': round(obs['lift'] * 100, 4),
+            # Expected |z| if lift were exactly zero: should be ~1.0
+            'expectedAbsZUnderNull': 1.0,
+            # Ratio of observed to expected (>3 is very suspicious)
+            'zRatio': round(abs(obs['z']), 2),
+        })
+    structural_bias.sort(key=lambda x: -x['absZ'])
+
+    # Null distribution percentiles for frontend
+    null_percentiles = {}
+    if null_max_abs_z_dist:
+        for pctl in [50, 75, 90, 95, 99]:
+            idx = min(int(len(null_max_abs_z_dist) * pctl / 100), len(null_max_abs_z_dist) - 1)
+            null_percentiles[f'p{pctl}'] = round(null_max_abs_z_dist[idx], 3)
+
+    null_model_meta = {
+        'nIterations': N_MC_ITERATIONS,
+        'nAreas': n_areas_mc,
+        'nPartyNumbers': MAX_PARTY_NUM,
+        'observedMaxAbsZ': round(observed_max_abs_z, 3),
+        'mcPValueGlobal': round(mc_p_value_global, 4),
+        'bonferroniAlpha': round(bonferroni_alpha, 4),
+        'bonferroniZCritical': bonferroni_z_critical,
+        'significantNumbers': significant_numbers,
+        'nSignificant': len(significant_numbers),
+        'nullMaxZPercentiles': null_percentiles,
+    }
+
+    print(f"  🎲 Monte Carlo complete: {N_MC_ITERATIONS} iterations, {n_areas_mc} areas")
+    print(f"  🎲 Observed max|z| = {observed_max_abs_z:.3f}, MC global p = {mc_p_value_global:.4f}")
+    print(f"  🎲 Bonferroni significant (|z|≥{bonferroni_z_critical}, p≤{bonferroni_alpha:.4f}): {len(significant_numbers)} numbers")
+    if significant_numbers:
+        for j in significant_numbers:
+            obs = observed_results[j]
+            party_id = f'PARTY-{str(j).zfill(4)}'
+            print(f"    → #{j} {get_party_name(party_id)}: z={obs['z']:.3f}, lift={obs['lift']*100:.2f}pp, n={obs['n']}")
+
     # ═══════════════════════════════════════════════════════
     # ── Entropy Weight Method (data-driven feature weights) ──
     # Instead of hardcoded 40/25/15/10/10, compute weights from
@@ -1151,8 +1550,8 @@ def main():
     print("  📊 Computing Entropy Weights...")
     all_area_codes = sorted(set(gap_scores.keys()) | set(dev_scores.keys()))
 
-    # Collect all 9 feature vectors (V4: added noVote + vps)
-    feature_names = ['gap', 'plDev', 'turnout', 'competition', 'consistency', 'spoiled', 'dominance', 'noVote', 'vps']
+    # Collect all 10 feature vectors
+    feature_names = ['gap', 'plDev', 'turnout', 'competition', 'consistency', 'spoiled', 'dominance', 'noVote', 'vps', 'benford']
     feature_vectors = {fn: [] for fn in feature_names}
     for ac in all_area_codes:
         feature_vectors['gap'].append(gap_scores.get(ac, {}).get('scaledScore', 0))
@@ -1166,6 +1565,7 @@ def main():
         feature_vectors['dominance'].append(dominance_scores.get(ac, {}).get('scaledScore', 0))
         feature_vectors['noVote'].append(novote_scores.get(ac, {}).get('scaledScore', 0))
         feature_vectors['vps'].append(vps_scores.get(ac, {}).get('scaledScore', 0))
+        feature_vectors['benford'].append(benford_scores.get(ac, {}).get('scaledScore', 0))
 
     def entropy_weights(feature_dict, feature_names_list):
         """Compute weights via Entropy Weight Method.
@@ -1216,8 +1616,9 @@ def main():
     W_DOMINANCE = entropy_w['dominance']
     W_NOVOTE = entropy_w['noVote']
     W_VPS = entropy_w['vps']
+    W_BENFORD = entropy_w['benford']
 
-    # ── Combine 9 components with entropy weights ──
+    # ── Combine 10 components with entropy weights ──
     ensemble_raw_scores = {}
     ensemble_analysis = []
 
@@ -1231,6 +1632,7 @@ def main():
         dom = dominance_scores.get(ac, {})
         nv = novote_scores.get(ac, {})
         vp = vps_scores.get(ac, {})
+        bf = benford_scores.get(ac, {})
 
         gap_s = g.get('scaledScore', 0)
         dev_s = dv.get('scaledScore', 0)
@@ -1241,11 +1643,13 @@ def main():
         dominance_s = dom.get('scaledScore', 0)
         novote_s = nv.get('scaledScore', 0)
         vps_s = vp.get('scaledScore', 0)
+        benford_s = bf.get('scaledScore', 0)
 
         raw_score = (gap_s * W_GAP + dev_s * W_DEV + turnout_s * W_TURNOUT +
                      conc_s * W_CONC + cons_s * W_CONSIST +
                      spoiled_s * W_SPOILED + dominance_s * W_DOMINANCE +
-                     novote_s * W_NOVOTE + vps_s * W_VPS)
+                     novote_s * W_NOVOTE + vps_s * W_VPS +
+                     benford_s * W_BENFORD)
 
         pop_w = population_weight(
             eligible_by_area.get(ac, stat_module.median(all_eligible_list) if all_eligible_list else 130000),
@@ -1258,7 +1662,7 @@ def main():
         province = get_province(area_name)
         winner_code = g.get('winnerPartyCode', '')
 
-        # V4: focus area tags & win66 party info
+        # Focus area tags & previous election info
         area_focus_tags = focus_area_tags.get(ac, [])
         cd_item = constituency_data.get(ac, {})
         w66_code = cd_item.get('win66PartyCode', '')
@@ -1292,12 +1696,18 @@ def main():
             'dominanceScore': round(dominance_s, 1),
             'dominanceHHI': round(dom.get('hhi', 0)),
             'dominanceWinnerShare': round(dom.get('winnerShare', 0), 1),
-            # V4: No-Vote indicator
+            # No-Vote indicator
             'noVoteScore': round(novote_s, 1),
             'noVoteRatio': round(nv.get('ratio', 0), 2),
-            # V4: Voters per Station
+            # Voters per Station
             'votersPerStationScore': round(vps_s, 1),
             'votersPerStation': round(vp.get('votersPerStation', 0), 1),
+            # Benford's Law (1st-digit)
+            'benfordScore': round(benford_s, 1),
+            'benfordChi2': bf.get('chi2', 0.0),
+            'benfordPValue': bf.get('pValue', 1.0),
+            'benfordDigitCounts': bf.get('digitCounts', {}),
+            'benfordTotalNumbers': bf.get('totalNumbers', 0),
             # Population
             'eligibleVoters': eligible_by_area.get(ac, 0),
             'populationWeight': round(pop_w, 3),
@@ -1315,7 +1725,7 @@ def main():
             'winnerParty': get_party_name(winner_code),
             'winnerPartyCode': winner_code,
             'winnerPartyColor': get_party_color(winner_code),
-            # V4: Focus area tags & previous election info
+            # Focus area tags & previous election info
             'focusAreaTags': area_focus_tags,
             'win66PartyCode': w66_code,
             'win66PartyName': get_party_name(w66_code) if w66_code else '',
@@ -1631,7 +2041,6 @@ def main():
             focus_area_counts[tag] = focus_area_counts.get(tag, 0) + 1
 
     ensemble_meta = {
-        'version': 'V4',
         'totalAreas': n_total,
         'features': len(feature_names),
         'entropyWeights': {fn: round(entropy_w[fn], 4) for fn in feature_names},
@@ -1645,7 +2054,371 @@ def main():
         'elevatedLabels': elevated_count,
         'focusAreaCounts': focus_area_counts,
         'officialSpoiledCount': sum(1 for e in ensemble_analysis if e.get('isOfficialSpoiledData', False)),
+        # Benford's Law (1st-digit) global results
+        'benfordGlobalChi2': global_chi2,
+        'benfordGlobalPValue': global_benford_p,
+        'benfordGlobalDistribution': global_benford_distribution,
+        'benfordTotalNumbers': global_total,
+        'benfordConformCount': benford_conform,
+        'benfordDeviateCount': benford_deviate,
     }
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ── Model A: Klimek Fingerprint (2D Turnout × Vote-Share Histogram) ──
+    # ═══════════════════════════════════════════════════════════════════════
+    # Reference: Klimek, Yegorov, Hanel & Thurner (PNAS 2012)
+    # "Statistical detection of systematic election irregularities"
+    #
+    # Idea: Plot each constituency as (turnout%, winner vote-share%).
+    # Clean elections → blob near centre. Ballot stuffing → ridge toward
+    # (100%, 100%). Incremental fraud → vertical smear at extreme turnout.
+    # We build a 2D histogram (heatmap) for the frontend.
+    # ═══════════════════════════════════════════════════════════════════════
+    print("  📊 Computing Klimek Fingerprint...")
+
+    klimek_points = []  # per-area data points
+    for item in ensemble_analysis:
+        ac = item['areaCode']
+        cd = constituency_data.get(ac, {})
+        eligible = eligible_by_area.get(ac, 0)
+        if eligible <= 0:
+            continue
+
+        # Turnout = total votes cast / eligible voters
+        mp_file_k = os.path.join(MP_DIR, f'{ac}.json')
+        if not os.path.exists(mp_file_k):
+            continue
+        with open(mp_file_k, 'r', encoding='utf-8') as f:
+            mp_raw_k = json.load(f)
+
+        total_votes_cast = sum(e.get('voteTotal', 0) for e in mp_raw_k.get('entries', []))
+        # Add spoiled + no-vote to get actual turnout denominator
+        good_votes = cd.get('goodVotes', total_votes_cast)
+        bad_votes = cd.get('badVotes', 0)
+        no_votes = cd.get('noVotes', 0)
+        actual_turnout = good_votes + bad_votes  # people who showed up
+        turnout_pct = min(100, actual_turnout / eligible * 100) if eligible > 0 else 0
+
+        # Winner vote share = winner votes / total valid votes
+        winner_entry = next((e for e in mp_raw_k['entries'] if e.get('rank') == 1), None)
+        if not winner_entry:
+            continue
+        winner_votes = winner_entry.get('voteTotal', 0)
+        winner_share_pct = (winner_votes / good_votes * 100) if good_votes > 0 else 0
+
+        klimek_points.append({
+            'areaCode': ac,
+            'areaName': item['areaName'],
+            'province': item['province'],
+            'turnout': round(turnout_pct, 2),
+            'winnerShare': round(winner_share_pct, 2),
+            'winnerParty': item['winnerParty'],
+            'winnerPartyColor': item['winnerPartyColor'],
+            'eligibleVoters': eligible,
+            'totalVotes': actual_turnout,
+            'winnerVotes': winner_votes,
+            'suspicionScore': item['finalScore'],
+        })
+
+    # Build 2D histogram bins (20×20 grid)
+    KLIMEK_BINS = 20
+    klimek_heatmap = []
+    bin_w = 100.0 / KLIMEK_BINS
+    for bx in range(KLIMEK_BINS):
+        for by in range(KLIMEK_BINS):
+            x_lo = bx * bin_w
+            x_hi = (bx + 1) * bin_w
+            y_lo = by * bin_w
+            y_hi = (by + 1) * bin_w
+            count = sum(1 for p in klimek_points
+                        if x_lo <= p['turnout'] < x_hi and y_lo <= p['winnerShare'] < y_hi)
+            if count > 0:
+                klimek_heatmap.append({
+                    'turnoutBin': round((x_lo + x_hi) / 2, 1),
+                    'shareBin': round((y_lo + y_hi) / 2, 1),
+                    'count': count,
+                    'turnoutRange': [round(x_lo, 1), round(x_hi, 1)],
+                    'shareRange': [round(y_lo, 1), round(y_hi, 1)],
+                })
+
+    # Summary statistics
+    if klimek_points:
+        turnouts = [p['turnout'] for p in klimek_points]
+        shares = [p['winnerShare'] for p in klimek_points]
+        klimek_meta = {
+            'totalPoints': len(klimek_points),
+            'meanTurnout': round(stat_module.mean(turnouts), 2),
+            'stdTurnout': round(stat_module.stdev(turnouts), 2) if len(turnouts) > 1 else 0,
+            'meanWinnerShare': round(stat_module.mean(shares), 2),
+            'stdWinnerShare': round(stat_module.stdev(shares), 2) if len(shares) > 1 else 0,
+            'minTurnout': round(min(turnouts), 2),
+            'maxTurnout': round(max(turnouts), 2),
+            'minWinnerShare': round(min(shares), 2),
+            'maxWinnerShare': round(max(shares), 2),
+            # Correlation coefficient
+            'correlation': round(
+                sum((t - stat_module.mean(turnouts)) * (s - stat_module.mean(shares)) for t, s in zip(turnouts, shares))
+                / (stat_module.stdev(turnouts) * stat_module.stdev(shares) * (len(turnouts) - 1))
+                if len(turnouts) > 2 and stat_module.stdev(turnouts) > 0 and stat_module.stdev(shares) > 0
+                else 0, 4),
+            # High-turnout high-share quadrant (potential fraud indicator)
+            'highHighCount': sum(1 for p in klimek_points if p['turnout'] > 80 and p['winnerShare'] > 60),
+            'bins': KLIMEK_BINS,
+        }
+    else:
+        klimek_meta = {'totalPoints': 0, 'bins': KLIMEK_BINS}
+
+    print(f"  📊 Klimek: {len(klimek_points)} points, corr={klimek_meta.get('correlation', 0)}, high-high={klimek_meta.get('highHighCount', 0)}")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ── Model B: Last-Digit Uniformity Test (Beber & Scacco 2012) ──
+    # ═══════════════════════════════════════════════════════════════════════
+    # Reference: Beber & Scacco "What the Numbers Say: A Digit-Based Test
+    # for Election Fraud" (Political Analysis 2012)
+    #
+    # Idea: The LAST digit of vote counts should be uniformly distributed
+    # (0-9) in genuine data. Humans fabricating numbers tend to avoid
+    # 0 and 5, and overuse certain digits. Chi-square test vs uniform.
+    # ═══════════════════════════════════════════════════════════════════════
+    print("  🔢 Computing Last-Digit Uniformity Test...")
+
+    last_digit_scores = {}
+    all_last_digit_chi2 = []
+    global_last_digit_counts = {d: 0 for d in range(10)}  # 0-9
+    global_last_digit_total = 0
+
+    for mp_file in mp_files:
+        area_code = os.path.basename(mp_file).replace('.json', '')
+        pl_file = os.path.join(PL_DIR, f'{area_code}.json')
+        if not os.path.exists(pl_file):
+            continue
+
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_data_ld = json.load(f)
+        with open(pl_file, 'r', encoding='utf-8') as f:
+            pl_data_ld = json.load(f)
+
+        # Collect last digits of all vote counts ≥ 10
+        area_last_digits = []
+        for entry in mp_data_ld.get('entries', []):
+            v = entry.get('voteTotal', 0)
+            if v >= 10:
+                area_last_digits.append(v % 10)
+        for entry in pl_data_ld.get('entries', []):
+            v = entry.get('voteTotal', 0)
+            if v >= 10:
+                area_last_digits.append(v % 10)
+
+        if len(area_last_digits) < 10:
+            last_digit_scores[area_code] = {
+                'chi2': 0.0, 'pValue': 1.0,
+                'digitCounts': {d: 0 for d in range(10)},
+                'totalNumbers': 0, 'scaledScore': 0,
+            }
+            continue
+
+        # Count last digits
+        ld_counts = {d: 0 for d in range(10)}
+        for ld in area_last_digits:
+            ld_counts[ld] += 1
+            global_last_digit_counts[ld] += 1
+            global_last_digit_total += 1
+
+        total_ld = sum(ld_counts.values())
+
+        # Chi-square test against uniform distribution
+        expected_each = total_ld / 10.0
+        chi2_ld = sum((ld_counts[d] - expected_each) ** 2 / expected_each for d in range(10))
+
+        # Approximate p-value (df=9)
+        df_ld = 9
+        if chi2_ld > 0:
+            z_ld = ((chi2_ld / df_ld) ** (1/3) - (1 - 2/(9*df_ld))) / math.sqrt(2/(9*df_ld))
+            p_ld = 1.0 / (1.0 + math.exp(1.7 * z_ld))
+        else:
+            p_ld = 1.0
+
+        all_last_digit_chi2.append(chi2_ld)
+        last_digit_scores[area_code] = {
+            'chi2': round(chi2_ld, 3),
+            'pValue': round(max(0, min(1, p_ld)), 4),
+            'digitCounts': ld_counts,
+            'totalNumbers': total_ld,
+            'scaledScore': 0,
+        }
+
+    # Scale last-digit chi2 to 0-100
+    if all_last_digit_chi2:
+        for ac in last_digit_scores:
+            if last_digit_scores[ac]['totalNumbers'] >= 10:
+                rz = robust_z_score(last_digit_scores[ac]['chi2'], all_last_digit_chi2)
+                last_digit_scores[ac]['scaledScore'] = max(0, min(100, rz * 20))
+
+    # Global last-digit distribution
+    global_last_digit_distribution = []
+    for d in range(10):
+        expected_pct = 10.0  # uniform = 10% each
+        observed_pct = (global_last_digit_counts[d] / global_last_digit_total * 100) if global_last_digit_total > 0 else 0
+        global_last_digit_distribution.append({
+            'digit': d,
+            'expected': round(expected_pct, 2),
+            'observed': round(observed_pct, 2),
+            'count': global_last_digit_counts[d],
+        })
+
+    # Global chi-square for last digit
+    if global_last_digit_total > 0:
+        exp_global_ld = global_last_digit_total / 10.0
+        global_last_digit_chi2 = sum((global_last_digit_counts[d] - exp_global_ld) ** 2 / exp_global_ld for d in range(10))
+        df_gld = 9
+        z_gld = ((global_last_digit_chi2 / df_gld) ** (1/3) - (1 - 2/(9*df_gld))) / math.sqrt(2/(9*df_gld))
+        global_last_digit_p = 1.0 / (1.0 + math.exp(1.7 * z_gld))
+    else:
+        global_last_digit_chi2 = 0.0
+        global_last_digit_p = 1.0
+
+    ld_conform = sum(1 for s in last_digit_scores.values() if s['pValue'] > 0.05)
+    ld_deviate = sum(1 for s in last_digit_scores.values() if s['pValue'] <= 0.05 and s['totalNumbers'] >= 10)
+    print(f"  🔢 Last-Digit: conform={ld_conform}, deviate(p≤0.05)={ld_deviate}")
+    print(f"  🔢 Global χ²={round(global_last_digit_chi2, 3)}, p={round(global_last_digit_p, 4)}, total={global_last_digit_total}")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # ── Model C: 2nd-Digit Benford's Law (Mebane 2BL Test) ──
+    # ═══════════════════════════════════════════════════════════════════════
+    # Reference: Mebane "Election Forensics: Vote Counts and Benford's Law"
+    # (Political Methodology Summer Meeting 2006)
+    #
+    # Idea: The SECOND digit of vote counts follows a known distribution
+    # (Benford 2nd-digit law). Unlike first-digit Benford which is well-known
+    # and can be gamed, 2nd-digit test is subtler and harder to fake.
+    # P(d2=k) = sum_{d1=1}^{9} log10(1 + 1/(10*d1 + k)) for k=0..9
+    # ═══════════════════════════════════════════════════════════════════════
+    print("  📐 Computing 2nd-Digit Benford's Law (Mebane)...")
+
+    # Compute Benford 2nd-digit expected probabilities
+    BENFORD_2ND_EXPECTED = {}
+    for k in range(10):
+        prob = sum(math.log10(1 + 1/(10*d1 + k)) for d1 in range(1, 10))
+        BENFORD_2ND_EXPECTED[k] = prob
+
+    second_digit_scores = {}
+    all_second_digit_chi2 = []
+    global_second_digit_counts = {d: 0 for d in range(10)}
+    global_second_digit_total = 0
+
+    def second_digit(n):
+        """Extract the second digit of a positive integer (must be >= 10)."""
+        if n < 10:
+            return None
+        while n >= 100:
+            n //= 10
+        return n % 10
+
+    for mp_file in mp_files:
+        area_code = os.path.basename(mp_file).replace('.json', '')
+        pl_file = os.path.join(PL_DIR, f'{area_code}.json')
+        if not os.path.exists(pl_file):
+            continue
+
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_data_sd = json.load(f)
+        with open(pl_file, 'r', encoding='utf-8') as f:
+            pl_data_sd = json.load(f)
+
+        # Collect second digits of all vote counts >= 10
+        area_second_digits = []
+        for entry in mp_data_sd.get('entries', []):
+            v = entry.get('voteTotal', 0)
+            if v >= 10:
+                sd = second_digit(v)
+                if sd is not None:
+                    area_second_digits.append(sd)
+        for entry in pl_data_sd.get('entries', []):
+            v = entry.get('voteTotal', 0)
+            if v >= 10:
+                sd = second_digit(v)
+                if sd is not None:
+                    area_second_digits.append(sd)
+
+        if len(area_second_digits) < 10:
+            second_digit_scores[area_code] = {
+                'chi2': 0.0, 'pValue': 1.0,
+                'digitCounts': {d: 0 for d in range(10)},
+                'totalNumbers': 0, 'scaledScore': 0,
+            }
+            continue
+
+        # Count second digits
+        sd_counts = {d: 0 for d in range(10)}
+        for sd_val in area_second_digits:
+            sd_counts[sd_val] += 1
+            global_second_digit_counts[sd_val] += 1
+            global_second_digit_total += 1
+
+        total_sd = sum(sd_counts.values())
+
+        # Chi-square test against Benford 2nd-digit distribution
+        chi2_sd = 0.0
+        for d in range(10):
+            observed = sd_counts[d]
+            expected = BENFORD_2ND_EXPECTED[d] * total_sd
+            if expected > 0:
+                chi2_sd += (observed - expected) ** 2 / expected
+
+        # Approximate p-value (df=9)
+        df_sd = 9
+        if chi2_sd > 0:
+            z_sd = ((chi2_sd / df_sd) ** (1/3) - (1 - 2/(9*df_sd))) / math.sqrt(2/(9*df_sd))
+            p_sd = 1.0 / (1.0 + math.exp(1.7 * z_sd))
+        else:
+            p_sd = 1.0
+
+        all_second_digit_chi2.append(chi2_sd)
+        second_digit_scores[area_code] = {
+            'chi2': round(chi2_sd, 3),
+            'pValue': round(max(0, min(1, p_sd)), 4),
+            'digitCounts': sd_counts,
+            'totalNumbers': total_sd,
+            'scaledScore': 0,
+        }
+
+    # Scale 2nd-digit chi2 to 0-100
+    if all_second_digit_chi2:
+        for ac in second_digit_scores:
+            if second_digit_scores[ac]['totalNumbers'] >= 10:
+                rz = robust_z_score(second_digit_scores[ac]['chi2'], all_second_digit_chi2)
+                second_digit_scores[ac]['scaledScore'] = max(0, min(100, rz * 20))
+
+    # Global 2nd-digit distribution
+    global_second_digit_distribution = []
+    for d in range(10):
+        expected_pct = BENFORD_2ND_EXPECTED[d] * 100
+        observed_pct = (global_second_digit_counts[d] / global_second_digit_total * 100) if global_second_digit_total > 0 else 0
+        global_second_digit_distribution.append({
+            'digit': d,
+            'expected': round(expected_pct, 2),
+            'observed': round(observed_pct, 2),
+            'count': global_second_digit_counts[d],
+        })
+
+    # Global chi-square for 2nd digit
+    if global_second_digit_total > 0:
+        global_sd_chi2 = sum(
+            (global_second_digit_counts[d] - BENFORD_2ND_EXPECTED[d] * global_second_digit_total) ** 2
+            / (BENFORD_2ND_EXPECTED[d] * global_second_digit_total)
+            for d in range(10)
+        )
+        df_gsd = 9
+        z_gsd = ((global_sd_chi2 / df_gsd) ** (1/3) - (1 - 2/(9*df_gsd))) / math.sqrt(2/(9*df_gsd))
+        global_sd_p = 1.0 / (1.0 + math.exp(1.7 * z_gsd))
+    else:
+        global_sd_chi2 = 0.0
+        global_sd_p = 1.0
+
+    sd_conform = sum(1 for s in second_digit_scores.values() if s['pValue'] > 0.05)
+    sd_deviate = sum(1 for s in second_digit_scores.values() if s['pValue'] <= 0.05 and s['totalNumbers'] >= 10)
+    print(f"  📐 2nd-Digit Benford: conform={sd_conform}, deviate(p≤0.05)={sd_deviate}")
+    print(f"  📐 Global 2nd-digit χ²={round(global_sd_chi2, 3)}, p={round(global_sd_p, 4)}, total={global_second_digit_total}")
 
     output = {
         'summary': {
@@ -1678,10 +2451,65 @@ def main():
         'voteSplitting': vote_splitting,
         'winningMargins': winning_margins,
         'referendumCorrelation': referendum_correlation,
-        # Ensemble model V4
+        # Ensemble model
         'ensembleAnalysis': ensemble_analysis,
         'ensemblePartySummary': ensemble_summary_list,
         'ensembleMeta': ensemble_meta,
+        # Monte Carlo Null Model (Twin-Number Effect)
+        'nullModelAnalysis': {
+            'perNumber': null_model_per_number,
+            'maxZHistogram': max_z_histogram,
+            'structuralBias': structural_bias,
+            'meta': null_model_meta,
+        },
+        # Klimek Fingerprint
+        'klimekAnalysis': {
+            'points': klimek_points,
+            'heatmap': klimek_heatmap,
+            'meta': klimek_meta,
+        },
+        # Last-Digit Uniformity Test
+        'lastDigitAnalysis': {
+            'globalDistribution': global_last_digit_distribution,
+            'globalChi2': round(global_last_digit_chi2, 3),
+            'globalPValue': round(global_last_digit_p, 4),
+            'totalNumbers': global_last_digit_total,
+            'conformCount': ld_conform,
+            'deviateCount': ld_deviate,
+            'perArea': [
+                {
+                    'areaCode': ac,
+                    'chi2': last_digit_scores[ac]['chi2'],
+                    'pValue': last_digit_scores[ac]['pValue'],
+                    'digitCounts': last_digit_scores[ac]['digitCounts'],
+                    'totalNumbers': last_digit_scores[ac]['totalNumbers'],
+                    'scaledScore': round(last_digit_scores[ac]['scaledScore'], 1),
+                }
+                for ac in sorted(last_digit_scores.keys())
+                if last_digit_scores[ac]['totalNumbers'] >= 10
+            ],
+        },
+        # 2nd-Digit Benford's Law (Mebane)
+        'secondDigitBenfordAnalysis': {
+            'globalDistribution': global_second_digit_distribution,
+            'globalChi2': round(global_sd_chi2, 3),
+            'globalPValue': round(global_sd_p, 4),
+            'totalNumbers': global_second_digit_total,
+            'conformCount': sd_conform,
+            'deviateCount': sd_deviate,
+            'perArea': [
+                {
+                    'areaCode': ac,
+                    'chi2': second_digit_scores[ac]['chi2'],
+                    'pValue': second_digit_scores[ac]['pValue'],
+                    'digitCounts': second_digit_scores[ac]['digitCounts'],
+                    'totalNumbers': second_digit_scores[ac]['totalNumbers'],
+                    'scaledScore': round(second_digit_scores[ac]['scaledScore'], 1),
+                }
+                for ac in sorted(second_digit_scores.keys())
+                if second_digit_scores[ac]['totalNumbers'] >= 10
+            ],
+        },
     }
 
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)

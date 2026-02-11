@@ -1,66 +1,129 @@
-# Thai Election 69 Correlative Analyzer
+# Thai Election 69 — Vote-Buying Forensic Analyzer
 
-An analytical tool designed to scrape and evaluate Thai election data, inspired by the correlation observations shared by [Khajochi's Blog](https://www.facebook.com/KhajochiBlog/posts/pfbid02qyYXY3NH7zns1gr3Emhdcij48y8UFQg3htvXYHRgfaDosjhQzytHapCAAj3bLhgl).
+> **Live Demo:** [sangzn34.github.io/election_69_analyzer](https://sangzn34.github.io/election_69_analyzer/)
 
-This project investigates the relationship between Constituency MP candidate numbers and Party List rankings across various election districts.
+เครื่องมือวิเคราะห์เชิงสถิติสำหรับตรวจสอบความผิดปกติในผลการเลือกตั้ง สส. ครั้งที่ 69 ของไทย โดยใช้ ensemble model รวม 10 ตัวชี้วัด พร้อมการทดสอบเชิงนิติวิทยาศาสตร์ (forensic statistics) อีก 3 โมเดล
+
+> Fork จาก [**Pethon/election_69_analyzer**](https://github.com/Pethon/election_69_analyzer) ซึ่งเป็นผู้สร้างระบบ scraping และ MP–Party List correlation analysis ดั้งเดิม
+
+---
 
 ## 📊 Project Overview
 
-The analyzer performs two primary functions:
-1. **Data Acquisition**: Automates the collection of unofficial election results (Constituency and Party List) from the Thai PBS platform.
-2. **Correlation Analysis**: Compares the winning MP's candidate number against the top 7 rankings of the Party List to identify statistical overlaps or trends.
+โปรเจกต์นี้แบ่งเป็น 3 ส่วนหลัก:
 
-## 🚀 Key Features
+1. **Data Scraping** (จาก upstream) — ดึงข้อมูลผลเลือกตั้งไม่เป็นทางการจาก Thai PBS API
+2. **Data Pipeline** (`prepare_data.py`) — ประมวลผลข้อมูลดิบเป็น JSON สำหรับ visualization
+3. **Interactive Dashboard** (React + Recharts) — แสดงผลวิเคราะห์แบบ interactive บน GitHub Pages
 
-- **Efficient Scraping**: Utilizes direct JSON API endpoints for high-speed data retrieval.
-- **Province Jumps**: Implements intelligent area-code skipping to avoid redundant requests for invalid districts.
-- **Dynamic Aggregation**: Summarizes outcomes by party, providing a sorted overview of where candidate-party number matches occur most frequently.
-- **Custom Filters**: Automatically excludes specific party codes (e.g., 06 and 09) from the analysis to focus on relevant variables.
+## 🔬 Forensic Models
 
-## 🛠️ Installation
+### Ensemble Suspicion Score — 10 Indicators
 
-Ensure you have Python 3.12+ installed.
+คำนวณคะแนนความน่าสงสัยจาก 10 ตัวชี้วัด ถ่วงน้ำหนักด้วย **Entropy Weight Method** และทดสอบ spatial autocorrelation ด้วย **Moran's I**:
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/election_69_analyzer.git
-   cd election_69_analyzer
-   ```
+| # | Indicator | คำอธิบาย |
+|---|-----------|----------|
+| 1 | Winner Dominance | สัดส่วนคะแนนผู้ชนะ |
+| 2 | Turnout Rate | อัตราการใช้สิทธิ์ |
+| 3 | HHI (Herfindahl) | ความกระจุกตัวของคะแนน |
+| 4 | Spoiled Rate | สัดส่วนบัตรเสีย (ข้อมูลจริงจาก กกต.) |
+| 5 | Twin-Number Effect | เลขผู้สมัคร ≈ เลขพรรค |
+| 6 | Focus Area Flag | พื้นที่ร้อน / เมือง / ฐานเสียง / ชายแดน |
+| 7 | Win66 Party Switch | พรรคผู้ชนะเปลี่ยนจากปี 66 |
+| 8 | NoVote Ratio | สัดส่วนผู้ไม่ไปใช้สิทธิ์ |
+| 9 | Voters/Station | ผู้มีสิทธิ์ต่อหน่วยเลือกตั้ง |
+| 10 | Benford's Law | 1st-digit distribution + Chi-square test |
 
-2. **Install dependencies**:
-   ```bash
-   pip install requests
-   ```
+### โมเดลนิติวิทยาศาสตร์เพิ่มเติม
 
-## 📖 Usage
+| Model | วิธีการ | อ้างอิง |
+|-------|---------|---------|
+| **Klimek Fingerprint** | 2D histogram ของ Turnout × Vote Share | Klimek et al. (2012) |
+| **Last-Digit Uniformity** | ทดสอบว่าหลักสุดท้ายกระจายสม่ำเสมอ | Beber & Scacco (2012) |
+| **2nd-Digit Benford** | ทดสอบหลักที่ 2 ตาม Benford's Law | Mebane (2008) |
+| **Monte Carlo Null Model** | 500-iteration permutation test สำหรับ twin-number | — |
 
-The analysis is performed in two sequential steps:
+## 🖥️ Dashboard Features
 
-### 1. Data Collection (if raw data updating is needed)
-Execute the scraper to download the latest unofficial results from Thai PBS. This process builds a local database in the `data/` directory.
+- **Summary Cards** — ภาพรวมผลเลือกตั้ง
+- **Ensemble Analysis** — 11 มุมมอง (scatter, radar, spatial, benford, klimek, last-digit, 2nd-benford, table ฯลฯ)
+- **Party Switcher** — วิเคราะห์การเปลี่ยนพรรคผู้ชนะ
+- **Turnout Anomaly** — ตรวจจับ turnout ผิดปกติ
+- **Vote Splitting** — เปรียบเทียบ MP vs Party List
+- **Winning Margin** — ส่วนต่างคะแนนผู้ชนะ
+- **Referendum Correlation** — เปรียบเทียบกับผลประชามติ
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Data Pipeline | Python 3.12+ (stdlib only) |
+| Frontend | React 19 + TypeScript 5.9 |
+| Charts | Recharts 2.15 |
+| Build | Vite 6 |
+| Deployment | GitHub Pages + GitHub Actions |
+
+## � Getting Started
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+
+
+### Installation
+
 ```bash
-python scripts/election_scraper.py
+git clone https://github.com/sangzn34/election_69_analyzer.git
+cd election_69_analyzer
 ```
-*Note: This process may take 5–10 minutes depending on network conditions.*
 
-### 2. Statistical Comparison
-Run the comparer to analyze the correlation between winning MP numbers and the top 7 Party List results.
+### Run Data Pipeline
+
 ```bash
+cd visualization
+pip install -r ../requirements.txt
+python3 scripts/prepare_data.py
+```
+
+ไฟล์ `public/election_data.json` จะถูกสร้างขึ้น
+
+### Run Dev Server
+
+```bash
+cd visualization
+npm install
+npm run dev
+```
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+## 📖 Original Features (from upstream)
+
+ระบบ scraping และ correlation analysis ดั้งเดิมจาก [Pethon](https://github.com/Pethon):
+
+```bash
+# ดึงข้อมูลจาก Thai PBS API
+python scripts/election_scraper.py
+
+# วิเคราะห์ correlation ระหว่าง MP number กับ Party List
 python scripts/mp_pl_comparer.py
 ```
 
-## 📝 Methodology
-The analyzer extracts the "MP Number" from the `candidateCode` of the winning constituency candidate. It then checks if that number matches the last two digits of any `partyCode` ranked #1 through #7 in the Party List for that same area. 
+## � Acknowledgments
 
-By default, parties **06 (United Thai Nation Party)** and **09 (Pheu Thai Party)** are excluded from the comparison to reduce known statistical bias.
+- **Original Project**: [**Pethon/election_69_analyzer**](https://github.com/Pethon/election_69_analyzer) — ระบบ scraping, data collection, และ MP–Party List correlation analysis
+- **Inspiration**: [Khajochorn (Khajochi)](https://www.facebook.com/KhajochiBlog/posts/pfbid02qyYXY3NH7zns1gr3Emhdcij48y8UFQg3htvXYHRgfaDosjhQzytHapCAAj3bLhgl) สำหรับข้อสังเกตเชิงวิเคราะห์ครั้งแรก
+- **Data Source**: [Thai PBS Election 69](https://www.thaipbs.or.th/election69/result/en/geo?region=all&view=area)
+- **Area Code Map**: [@anwam](https://github.com/anwam)
 
-## 🙏 Acknowledgments
-- **Inspiration**: Khajochorn (Khajochi) for the initial observation and analysis.
-- **Data Source**: Results are fetched from the [Thai PBS Election 69](https://www.thaipbs.or.th/election69/result/en/geo?region=all&view=area) interactive portal. We are grateful for the availability of this public information for educational and analytical purposes.
-- **area code-name map**: From [@anwam](https://github.com/anwam).
+## 📄 License
 
-## 🤖 Built with Gemini
-This project was primarily developed with the assistance of **Gemini**. If you encounter any bugs, unexpected behavior, or inaccuracies in the analysis, please feel free to report them.
+MIT — ดู [LICENSE](LICENSE)
 
 ---
-*Disclaimer: This project is for analytical and educational purposes only. Data is based on unofficial results as reported by Thai PBS.*
+
+*Disclaimer: โปรเจกต์นี้มีวัตถุประสงค์เพื่อการวิเคราะห์และศึกษาเท่านั้น ข้อมูลอ้างอิงจากผลการเลือกตั้งไม่เป็นทางการ*

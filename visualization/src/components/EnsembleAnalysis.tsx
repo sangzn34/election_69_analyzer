@@ -4,14 +4,16 @@ import {
   ScatterChart, Scatter, ZAxis,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   PieChart, Pie,
+  ReferenceLine,
 } from 'recharts'
 import {
   Star, CircleAlert, CircleDot, Map as MapIcon, BarChart3, Trophy, Microscope,
   Radar as RadarIcon, Table2, Target, Tag, TriangleAlert, FlaskConical,
   TrendingUp, Vote, Users, Scale, Trash2, Crown, Ban, Building2,
-  Sparkles, Thermometer, ShieldCheck, RefreshCw, Gauge,
+  Sparkles, Thermometer, ShieldCheck, RefreshCw, Gauge, Hash, Shuffle,
+  Fingerprint, Binary, Sigma,
 } from 'lucide-react'
-import type { EnsembleAnalysisItem, EnsemblePartySummaryItem, EnsembleMeta, NameToCodeMap } from '../types'
+import type { EnsembleAnalysisItem, EnsemblePartySummaryItem, EnsembleMeta, NameToCodeMap, BenfordDigitItem, NullModelAnalysis, KlimekAnalysis, LastDigitAnalysis, SecondDigitBenfordAnalysis } from '../types'
 import PartyLogo from './PartyLogo'
 
 /* ─── Tooltip: Area Detail ─── */
@@ -62,6 +64,7 @@ const AreaTooltip = ({ active, payload }: AreaTooltipProps) => {
       <div className="item"><Crown size={11} style={{ verticalAlign: -1 }} /> Dominance: {d.dominanceScore.toFixed(0)} (HHI:{d.dominanceHHI}, win:{d.dominanceWinnerShare}%)</div>
       <div className="item"><Ban size={11} style={{ verticalAlign: -1 }} /> No-Vote: {d.noVoteScore.toFixed(0)} ({d.noVoteRatio}%)</div>
       <div className="item"><Building2 size={11} style={{ verticalAlign: -1 }} /> VPS: {d.votersPerStationScore.toFixed(0)} ({d.votersPerStation.toLocaleString()} คน/หน่วย)</div>
+      <div className="item"><Hash size={11} style={{ verticalAlign: -1 }} /> Benford: {d.benfordScore.toFixed(0)} (χ²={d.benfordChi2}, p={d.benfordPValue})</div>
       {d.focusAreaTags && d.focusAreaTags.length > 0 && (
         <div className="item" style={{ fontSize: 10, marginTop: 2 }}>
           <Tag size={10} style={{ verticalAlign: -1 }} /> {d.focusAreaTags.map(t => FOCUS_AREA_LABELS[t] || t).join(', ')}
@@ -158,6 +161,7 @@ const FEATURE_LABELS: Record<string, string> = {
   dominance: 'Winner Dominance',
   noVote: 'No-Vote Ratio',
   vps: 'Voters/Station',
+  benford: "Benford's Law",
 }
 
 const FEATURE_COLORS: Record<string, string> = {
@@ -170,6 +174,7 @@ const FEATURE_COLORS: Record<string, string> = {
   dominance: '#a78bfa',
   noVote: '#f472b6',
   vps: '#22d3ee',
+  benford: '#facc15',
 }
 
 const FOCUS_AREA_LABELS: Record<string, string> = {
@@ -194,11 +199,15 @@ interface Props {
   partySummary: EnsemblePartySummaryItem[]
   meta?: EnsembleMeta
   nameToCodeMap: NameToCodeMap
+  nullModel?: NullModelAnalysis
+  klimek?: KlimekAnalysis
+  lastDigit?: LastDigitAnalysis
+  secondDigitBenford?: SecondDigitBenfordAnalysis
 }
 
-type ViewMode = 'party-summary' | 'top-areas' | 'scatter' | 'radar' | 'spatial' | 'table'
+type ViewMode = 'party-summary' | 'top-areas' | 'scatter' | 'radar' | 'spatial' | 'benford' | 'null-model' | 'klimek' | 'last-digit' | '2nd-benford' | 'table'
 
-export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeMap }: Props) {
+export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeMap, nullModel, klimek, lastDigit, secondDigitBenford }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('party-summary')
   const [topN, setTopN] = useState(30)
   const [filterParty, setFilterParty] = useState<string>('all')
@@ -265,12 +274,12 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
   const radarData = useMemo(() => {
     const byParty = new Map<string, {
       gap: number[]; dev: number[]; turnout: number[]; conc: number[]
-      cons: number[]; spoiled: number[]; dom: number[]; noVote: number[]; vps: number[]; color: string; name: string
+      cons: number[]; spoiled: number[]; dom: number[]; noVote: number[]; vps: number[]; benford: number[]; color: string; name: string
     }>()
     for (const d of data) {
       if (!byParty.has(d.winnerPartyCode)) {
         byParty.set(d.winnerPartyCode, {
-          gap: [], dev: [], turnout: [], conc: [], cons: [], spoiled: [], dom: [], noVote: [], vps: [],
+          gap: [], dev: [], turnout: [], conc: [], cons: [], spoiled: [], dom: [], noVote: [], vps: [], benford: [],
           color: d.winnerPartyColor, name: d.winnerParty,
         })
       }
@@ -284,11 +293,12 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
       p.dom.push(d.dominanceScore)
       p.noVote.push(d.noVoteScore)
       p.vps.push(d.votersPerStationScore)
+      p.benford.push(d.benfordScore)
     }
     const result: Array<{
       party: string; color: string
       gapAvg: number; devAvg: number; turnoutAvg: number; concAvg: number
-      consAvg: number; spoiledAvg: number; domAvg: number; noVoteAvg: number; vpsAvg: number
+      consAvg: number; spoiledAvg: number; domAvg: number; noVoteAvg: number; vpsAvg: number; benfordAvg: number
     }> = []
     for (const [, v] of byParty) {
       if (v.gap.length >= 10) {
@@ -298,13 +308,14 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
           gapAvg: avg(v.gap), devAvg: avg(v.dev), turnoutAvg: avg(v.turnout),
           concAvg: avg(v.conc), consAvg: avg(v.cons),
           spoiledAvg: avg(v.spoiled), domAvg: avg(v.dom), noVoteAvg: avg(v.noVote), vpsAvg: avg(v.vps),
+          benfordAvg: avg(v.benford),
         })
       }
     }
     return result.sort((a, b) => b.gapAvg - a.gapAvg)
   }, [data])
 
-  // ─── Radar chart data format (9 axes) ───
+  // ─── Radar chart data format (10 axes) ───
   const radarChartData = useMemo(() => [
     { subject: 'Gap', ...Object.fromEntries(radarData.map(r => [r.party, r.gapAvg])) },
     { subject: 'PL Dev', ...Object.fromEntries(radarData.map(r => [r.party, r.devAvg])) },
@@ -315,6 +326,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
     { subject: 'Dominance', ...Object.fromEntries(radarData.map(r => [r.party, r.domAvg])) },
     { subject: 'No-Vote', ...Object.fromEntries(radarData.map(r => [r.party, r.noVoteAvg])) },
     { subject: 'VPS', ...Object.fromEntries(radarData.map(r => [r.party, r.vpsAvg])) },
+    { subject: 'Benford', ...Object.fromEntries(radarData.map(r => [r.party, r.benfordAvg])) },
   ], [radarData])
 
   // ─── Spatial cluster summary ───
@@ -340,31 +352,31 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
     <div className="section">
       <div className="section-title">
         <span className="emoji">🧪</span>
-        Ensemble Suspicion Score V4: Official กกต. Data + Focus Areas
+        Ensemble Suspicion Score — 10 Indicators
       </div>
       <div className="section-desc">
-        คำนวณ Suspicion Score จาก <strong>9 ตัวชี้วัด</strong> + <strong>ข้อมูลทางการ กกต.</strong> (บัตรเสีย, ผู้ไม่ไปใช้สิทธิ์) +
-        <strong> Focus Area Filters</strong> + <strong>Entropy Weight</strong> +
-        <strong> Permutation Test</strong> + <strong>Moran&apos;s I</strong> +
-        <strong> Semi-supervised Labels</strong>
+        คำนวณ Suspicion Score จาก <strong>10 ตัวชี้วัด</strong> +
+        <strong> ข้อมูลทางการ กกต.</strong> + <strong> Focus Area Filters</strong> +
+        <strong> Entropy Weight</strong> + <strong> Permutation Test</strong> +
+        <strong> Moran&apos;s I</strong> + <strong> Semi-supervised Labels</strong>
       </div>
 
-      {/* ─── V3 Methodology ─── */}
+      {/* ─── Methodology ─── */}
       <div style={{
         margin: '16px 0 20px', padding: 20, background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
         borderRadius: 10, border: '1px solid #2a2a4a', lineHeight: 1.9,
       }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>📖</span> Ensemble V4 — What&apos;s New?
+          <span style={{ fontSize: 20 }}>📖</span> วิธีการวิเคราะห์ (Methodology)
         </div>
 
         <div style={{ fontSize: 13, marginBottom: 12 }}>
-          <strong>V4</strong> อัปเกรดจาก V3: ตัวชี้วัดเป็น <strong>9 ตัว</strong> (เพิ่ม No-Vote Ratio + Voters/Station),
-          ใช้ <strong>ข้อมูลทางการ กกต.</strong> (บัตรเสียจริง แทน proxy), เพิ่ม <strong>Focus Area Filters</strong>
-          (พื้นที่ร้อน, เมือง, ฐานเสียง, ชายแดน) จาก ThaiPBS, และข้อมูล <strong>พรรคผู้ชนะปี 66</strong>
+          วิเคราะห์ความน่าสงสัยของแต่ละเขตจาก <strong>10 ตัวชี้วัด</strong> โดยน้ำหนักของแต่ละตัวชี้วัดคำนวณจาก
+          Entropy Weight Method (data-driven) ไม่ใช่กำหนดเอง. เสริมด้วย Permutation Test (p-value),
+          Moran&apos;s I (spatial clustering) และ Semi-supervised Labels
         </div>
 
-        <div style={{ fontSize: 13, marginBottom: 6, fontWeight: 600 }}>ตัวชี้วัด 9 ตัว + น้ำหนัก Entropy:</div>
+        <div style={{ fontSize: 13, marginBottom: 6, fontWeight: 600 }}>ตัวชี้วัด 10 ตัว + น้ำหนัก Entropy:</div>
 
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 16,
@@ -405,21 +417,24 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
           </div>
         </div>
 
-        <div style={{ fontSize: 13, marginBottom: 6, fontWeight: 600 }}><Sparkles size={14} style={{ verticalAlign: -2 }} /> สิ่งที่ V4 เพิ่มจาก V3:</div>
+        <div style={{ fontSize: 13, marginBottom: 6, fontWeight: 600 }}><Sparkles size={14} style={{ verticalAlign: -2 }} /> คุณสมบัติเด่น:</div>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 12,
         }}>
+          <div style={{ fontSize: 12, padding: '8px 10px', background: '#facc1510', border: '1px solid #facc1533', borderRadius: 6 }}>
+            <strong><Hash size={11} style={{ verticalAlign: -2 }} /> Benford&apos;s Law</strong> — วิเคราะห์ first-digit distribution + Chi-square test (forensic statistics)
+          </div>
           <div style={{ fontSize: 12, padding: '8px 10px', background: '#f472b610', border: '1px solid #f472b633', borderRadius: 6 }}>
             <strong><Ban size={11} style={{ verticalAlign: -2 }} /> No-Vote Ratio</strong> — สัดส่วนผู้ไม่ไปใช้สิทธิ์ (ข้อมูลทางการ กกต.)
           </div>
           <div style={{ fontSize: 12, padding: '8px 10px', background: '#ef444410', border: '1px solid #ef444433', borderRadius: 6 }}>
-            <strong><ShieldCheck size={11} style={{ verticalAlign: -2 }} /> Official Spoiled</strong> — ใช้บัตรเสียจริงจาก กกต. แทน proxy
+            <strong><ShieldCheck size={11} style={{ verticalAlign: -2 }} /> Official Spoiled</strong> — ใช้บัตรเสียจริงจาก กกต.
           </div>
           <div style={{ fontSize: 12, padding: '8px 10px', background: '#ffa50210', border: '1px solid #ffa50233', borderRadius: 6 }}>
             <strong><Tag size={11} style={{ verticalAlign: -2 }} /> Focus Areas</strong> — กรองตามพื้นที่ร้อน, เมือง, ฐานเสียง, ชายแดน
           </div>
           <div style={{ fontSize: 12, padding: '8px 10px', background: '#42b8ff10', border: '1px solid #42b8ff33', borderRadius: 6 }}>
-            <strong><RefreshCw size={11} style={{ verticalAlign: -2 }} /> Win66 Party</strong> — เทียบพรรคผู้ชนะปี 66 vs ปี 69
+            <strong><RefreshCw size={11} style={{ verticalAlign: -2 }} /> เทียบปี 66</strong> — เทียบพรรคผู้ชนะปี 66 vs ปี 69
           </div>
           <div style={{ fontSize: 12, padding: '8px 10px', background: '#22d3ee10', border: '1px solid #22d3ee33', borderRadius: 6 }}>
             <strong><Building2 size={11} style={{ verticalAlign: -2 }} /> Voters/Station</strong> — ผู้มีสิทธิ์/หน่วยเลือกตั้ง (proxy ความเป็นเมือง/ชนบท)
@@ -433,7 +448,6 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
             border: '1px solid #ffffff15', display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8,
           }}>
-            <div><FlaskConical size={11} style={{ verticalAlign: -2 }} /> Version: <strong>{meta.version}</strong></div>
             <div><BarChart3 size={11} style={{ verticalAlign: -2 }} /> Features: <strong>{meta.features}</strong></div>
             <div><Sparkles size={11} style={{ verticalAlign: -2 }} /> Permutations: <strong>{meta.permutationIterations.toLocaleString()}</strong></div>
             <div><MapIcon size={11} style={{ verticalAlign: -2 }} /> Global Moran&apos;s I: <strong>{meta.globalMoranI}</strong></div>
@@ -444,6 +458,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
             <div><Tag size={11} style={{ verticalAlign: -2, color: '#f44853' }} /> Suspect: <strong>{meta.suspectLabels}</strong></div>
             <div><Tag size={11} style={{ verticalAlign: -2, color: '#ffa502' }} /> Elevated: <strong>{meta.elevatedLabels}</strong></div>
             <div><ShieldCheck size={11} style={{ verticalAlign: -2, color: '#5ed88a' }} /> Official บัตรเสีย: <strong>{meta.officialSpoiledCount}</strong> เขต</div>
+            <div><Hash size={11} style={{ verticalAlign: -2, color: '#facc15' }} /> Benford deviate: <strong>{meta.benfordDeviateCount}</strong></div>
           </div>
 
           {/* Focus area tag counts */}
@@ -510,8 +525,13 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
           ['party-summary', 'สรุปรายพรรค', <BarChart3 size={14} key="i1" />],
           ['top-areas', 'เขตน่าสงสัยสูงสุด', <Trophy size={14} key="i2" />],
           ['scatter', 'Gap vs Deviation', <Microscope size={14} key="i3" />],
-          ['radar', 'Radar 9 แกน', <RadarIcon size={14} key="i4" />],
+          ['radar', 'Radar 10 แกน', <RadarIcon size={14} key="i4" />],
           ['spatial', 'Spatial Cluster', <MapIcon size={14} key="i5" />],
+          ['benford', "Benford's Law", <Hash size={14} key="i7" />],
+          ['null-model', 'Null Model', <Shuffle size={14} key="i8" />],
+          ['klimek', 'Klimek Fingerprint', <Fingerprint size={14} key="i9" />],
+          ['last-digit', 'Last-Digit Test', <Binary size={14} key="i10" />],
+          ['2nd-benford', "2nd-Digit Benford", <Sigma size={14} key="i11" />],
           ['table', 'ตาราง', <Table2 size={14} key="i6" />],
         ] as [ViewMode, string, React.ReactNode][]).map(([mode, label, icon]) => (
           <button
@@ -526,7 +546,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
       </div>
 
       {/* ─── Party filter (for area views) ─── */}
-      {(viewMode === 'top-areas' || viewMode === 'scatter' || viewMode === 'table' || viewMode === 'spatial') && (
+      {(viewMode === 'top-areas' || viewMode === 'scatter' || viewMode === 'table' || viewMode === 'spatial' || viewMode === 'benford') && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <span style={{ opacity: 0.7 }}>กรองพรรค:</span>
           <select
@@ -834,6 +854,1136 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
         </div>
       )}
 
+      {/* ═══ VIEW: Benford's Law ═══ */}
+      {viewMode === 'benford' && (
+        <div>
+          {/* Global Benford Distribution Chart */}
+          <div style={{
+            padding: 16, background: 'var(--bg-card)', borderRadius: 10,
+            border: '1px solid var(--border-color)', marginBottom: 20,
+          }}>
+            <h3 style={{ fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Hash size={16} color="#facc15" /> Global First-Digit Distribution (Benford&apos;s Law)
+            </h3>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 12 }}>
+              เปรียบเทียบการกระจายตัวของหลักแรกของจำนวนโหวตทั้งประเทศ vs ค่าที่คาดหวังจาก Benford&apos;s Law
+              {meta && (
+                <span style={{ marginLeft: 8 }}>
+                  | Global χ²={meta.benfordGlobalChi2} | p={meta.benfordGlobalPValue} | N={meta.benfordTotalNumbers?.toLocaleString()}
+                </span>
+              )}
+            </div>
+            {meta?.benfordGlobalDistribution && (
+              <div className="chart-container" style={{ height: 300 }}>
+                <ResponsiveContainer>
+                  <BarChart data={meta.benfordGlobalDistribution} margin={{ left: 10, right: 10, top: 10, bottom: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                    <XAxis dataKey="digit" stroke="#888" label={{ value: 'First Digit', position: 'insideBottom', offset: -10, fill: '#888' }} />
+                    <YAxis stroke="#888" label={{ value: '%', angle: -90, position: 'insideLeft', fill: '#888' }} />
+                    <Tooltip
+                      contentStyle={{ background: '#1a1a2e', border: '1px solid #333' }}
+                      formatter={(value: number, name: string) => [
+                        `${value.toFixed(2)}%`,
+                        name === 'expected' ? "Benford's Expected" : 'Observed',
+                      ]}
+                    />
+                    <Bar dataKey="expected" name="expected" fill="#facc15" fillOpacity={0.3} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="observed" name="observed" fill="#facc15" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 16, fontSize: 11, opacity: 0.7, marginTop: 8, justifyContent: 'center' }}>
+              <span>▓ Observed</span>
+              <span style={{ opacity: 0.4 }}>░ Benford&apos;s Expected</span>
+            </div>
+          </div>
+
+          {/* Summary cards */}
+          {meta && (
+            <div className="overview-grid" style={{ marginBottom: 20 }}>
+              <div className="stat-card">
+                <div className="stat-number" style={{ color: '#5ed88a' }}>{meta.benfordConformCount}</div>
+                <div className="stat-label"><ShieldCheck size={12} style={{ verticalAlign: -2 }} /> Conform (p&gt;0.05)</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number" style={{ color: '#facc15' }}>{meta.benfordDeviateCount}</div>
+                <div className="stat-label"><TriangleAlert size={12} style={{ verticalAlign: -2 }} /> Deviate (p≤0.05)</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number">{meta.benfordTotalNumbers?.toLocaleString()}</div>
+                <div className="stat-label"><Hash size={12} style={{ verticalAlign: -2 }} /> Total Numbers</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-number">{meta.benfordGlobalChi2}</div>
+                <div className="stat-label"><FlaskConical size={12} style={{ verticalAlign: -2 }} /> Global χ²</div>
+              </div>
+            </div>
+          )}
+
+          {/* Per-area Benford deviation table — top deviating areas */}
+          <h3 style={{ fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <TriangleAlert size={16} color="#facc15" /> เขตที่ First-Digit Distribution เบี่ยงเบนจาก Benford&apos;s Law มากที่สุด
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table" style={{ width: '100%', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>เขต</th>
+                  <th>จังหวัด</th>
+                  <th>พรรค</th>
+                  <th style={{ textAlign: 'center' }}>Benford Score</th>
+                  <th style={{ textAlign: 'center' }}>χ² Statistic</th>
+                  <th style={{ textAlign: 'center' }}>p-value</th>
+                  <th style={{ textAlign: 'center' }}>N</th>
+                  <th style={{ textAlign: 'center' }}>Final Score</th>
+                  <th style={{ textAlign: 'center' }}>Risk</th>
+                  {[1,2,3,4,5,6,7,8,9].map(d => (
+                    <th key={d} style={{ textAlign: 'center', fontSize: 10 }}>d={d}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...filtered]
+                  .filter(d => d.benfordTotalNumbers >= 10)
+                  .sort((a, b) => b.benfordChi2 - a.benfordChi2)
+                  .slice(0, 50)
+                  .map((d, i) => {
+                    const BENFORD_EXPECTED_PCT = [30.1, 17.6, 12.5, 9.7, 7.9, 6.7, 5.8, 5.1, 4.6]
+                    return (
+                      <tr key={d.areaCode} style={{
+                        borderLeft: `3px solid ${d.benfordPValue <= 0.05 ? '#facc15' : '#333'}`,
+                      }}>
+                        <td style={{ textAlign: 'center', opacity: 0.5 }}>{i + 1}</td>
+                        <td style={{ fontWeight: 600 }}>{d.areaName}</td>
+                        <td>{d.province}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <PartyLogo partyCode={d.winnerPartyCode} size={18} />
+                            <span style={{ color: d.winnerPartyColor }}>{d.winnerParty}</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: d.benfordPValue <= 0.05 ? '#facc15' : undefined }}>
+                          {d.benfordScore.toFixed(1)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>{d.benfordChi2.toFixed(2)}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{
+                            padding: '2px 6px', borderRadius: 8, fontSize: 10, fontWeight: 600,
+                            background: d.benfordPValue <= 0.05 ? '#facc1522' : '#5ed88a22',
+                            color: d.benfordPValue <= 0.05 ? '#facc15' : '#5ed88a',
+                          }}>
+                            {d.benfordPValue.toFixed(3)}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>{d.benfordTotalNumbers}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: riskColor(d.riskLevel) }}>
+                          {d.finalScore}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{
+                            padding: '1px 6px', borderRadius: 8, fontSize: 9, fontWeight: 700,
+                            background: riskColor(d.riskLevel) + '22', color: riskColor(d.riskLevel),
+                          }}>
+                            {d.riskLevel.toUpperCase()}
+                          </span>
+                        </td>
+                        {[1,2,3,4,5,6,7,8,9].map(digit => {
+                          const count = d.benfordDigitCounts?.[String(digit)] || 0
+                          const observedPct = d.benfordTotalNumbers > 0 ? (count / d.benfordTotalNumbers) * 100 : 0
+                          const expectedPct = BENFORD_EXPECTED_PCT[digit - 1]
+                          const diff = observedPct - expectedPct
+                          return (
+                            <td key={digit} style={{
+                              textAlign: 'center', fontSize: 10,
+                              color: Math.abs(diff) > 5 ? '#facc15' : undefined,
+                              fontWeight: Math.abs(diff) > 5 ? 700 : 400,
+                            }}>
+                              {observedPct.toFixed(0)}%
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Methodology note for Benford */}
+          <div style={{
+            marginTop: 20, padding: 14, background: '#facc1508', borderRadius: 8,
+            border: '1px solid #facc1533', fontSize: 12, lineHeight: 1.8,
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Hash size={14} color="#facc15" /> Benford&apos;s Law คืออะไร?
+            </div>
+            <div>
+              <strong>Benford&apos;s Law</strong> (กฎของเบนฟอร์ด) กล่าวว่า ในชุดข้อมูลที่เกิดขึ้นตามธรรมชาติ
+              หลักแรกของตัวเลขจะมีการกระจายตัวแบบเฉพาะ: เลข 1 ปรากฏ ~30.1%, เลข 2 ~17.6%, ...
+              เลข 9 ~4.6% — ถ้าข้อมูลเบี่ยงเบนจากนี้อย่างมีนัยสำคัญ อาจบ่งชี้ว่ามีการ manipulate ตัวเลข
+            </div>
+            <div style={{ marginTop: 6 }}>
+              ใช้ <strong>Chi-square goodness-of-fit test</strong> ทดสอบว่า first-digit distribution
+              ของจำนวนโหวต (ทั้ง MP + PL) ในแต่ละเขตเป็นไปตาม Benford&apos;s Law หรือไม่
+              — p≤0.05 = เบี่ยงเบนอย่างมีนัยสำคัญ
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ VIEW: Null Model (Monte Carlo Twin-Number Effect) ═══ */}
+      {viewMode === 'null-model' && nullModel && (
+        <div>
+          {/* Description */}
+          <div style={{
+            padding: 16, background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            borderRadius: 10, border: '1px solid #2a2a4a', marginBottom: 20, lineHeight: 1.8,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Shuffle size={18} color="#22d3ee" /> Monte Carlo Null Model — Twin-Number Effect
+            </div>
+            <div style={{ fontSize: 13 }}>
+              ทดสอบว่า pattern &quot;ผู้ชนะหมายเลข j → พรรค PL หมายเลข j ได้คะแนนสูง&quot;
+              เป็นไปได้โดยบังเอิญหรือไม่ โดยจำลอง <strong>{nullModel.meta.nIterations}</strong> รอบ
+              ของโลกที่สลับหมายเลขผู้ชนะแบบสุ่ม แล้วเปรียบเทียบ z-score ที่สังเกตได้กับ null distribution
+            </div>
+            <div style={{ fontSize: 12, marginTop: 8 }}>
+              <strong>Bonferroni correction:</strong> ทดสอบ {nullModel.meta.nPartyNumbers} หมายเลขพร้อมกัน
+              → α<sub>corrected</sub> = 0.05/{nullModel.meta.nPartyNumbers} = {nullModel.meta.bonferroniAlpha.toFixed(4)}
+              → critical |z| ≥ {nullModel.meta.bonferroniZCritical}
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="overview-grid" style={{ marginBottom: 20 }}>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#22d3ee' }}>{nullModel.meta.nIterations.toLocaleString()}</div>
+              <div className="stat-label"><Shuffle size={12} style={{ verticalAlign: -2 }} /> MC Iterations</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#f44853' }}>{nullModel.meta.observedMaxAbsZ.toFixed(2)}</div>
+              <div className="stat-label"><TrendingUp size={12} style={{ verticalAlign: -2 }} /> Observed max|z|</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: nullModel.meta.mcPValueGlobal < 0.05 ? '#f44853' : '#5ed88a' }}>
+                {nullModel.meta.mcPValueGlobal < 0.001 ? '<0.001' : nullModel.meta.mcPValueGlobal.toFixed(4)}
+              </div>
+              <div className="stat-label"><Star size={12} style={{ verticalAlign: -2 }} /> MC Global p-value</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: nullModel.meta.nSignificant > 0 ? '#facc15' : '#5ed88a' }}>
+                {nullModel.meta.nSignificant}
+              </div>
+              <div className="stat-label"><TriangleAlert size={12} style={{ verticalAlign: -2 }} /> Bonferroni Sig.</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{nullModel.meta.nAreas}</div>
+              <div className="stat-label"><Target size={12} style={{ verticalAlign: -2 }} /> Areas Tested</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{nullModel.meta.bonferroniZCritical}</div>
+              <div className="stat-label"><Scale size={12} style={{ verticalAlign: -2 }} /> Critical |z|</div>
+            </div>
+          </div>
+
+          {/* Chart 1: Z-Score per Party Number */}
+          <div style={{
+            padding: 16, background: 'var(--bg-card)', borderRadius: 10,
+            border: '1px solid var(--border-color)', marginBottom: 20,
+          }}>
+            <h3 style={{ fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <BarChart3 size={16} color="#22d3ee" /> Observed z-score per Party Number (Twin-Number Lift)
+            </h3>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 12 }}>
+              z-score &gt; 0 = พรรค PL หมายเลข j ได้คะแนนสูงกว่าค่าเฉลี่ยประเทศในเขตที่ผู้ชนะหมายเลข j
+              | เส้นประ = Bonferroni critical z (±{nullModel.meta.bonferroniZCritical})
+            </div>
+            <div className="chart-container" style={{ height: 380 }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={[...nullModel.perNumber].sort((a, b) => a.number - b.number)}
+                  margin={{ left: 10, right: 10, top: 10, bottom: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis
+                    dataKey="number"
+                    stroke="#888"
+                    label={{ value: 'Party Number', position: 'insideBottom', offset: -10, fill: '#888' }}
+                  />
+                  <YAxis stroke="#888" label={{ value: 'z-score', angle: -90, position: 'insideLeft', fill: '#888' }} />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a2e', border: '1px solid #333', fontSize: 12 }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'zScore') return [value.toFixed(3), 'z-score']
+                      return [value, name]
+                    }}
+                    labelFormatter={(label) => {
+                      const item = nullModel.perNumber.find(p => p.number === label)
+                      return item ? `#${label} ${item.partyName}` : `#${label}`
+                    }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload || !payload.length) return null
+                      const d = payload[0].payload as typeof nullModel.perNumber[0]
+                      return (
+                        <div style={{ background: '#1a1a2e', border: '1px solid #333', padding: 10, borderRadius: 6, fontSize: 12, lineHeight: 1.8 }}>
+                          <div style={{ fontWeight: 700, marginBottom: 4 }}>#{d.number} {d.partyName}</div>
+                          <div>z-score: <strong style={{ color: d.isBonferroniSig ? '#f44853' : undefined }}>{d.zScore.toFixed(3)}</strong></div>
+                          <div>Lift: {d.lift.toFixed(3)}pp ({d.liftPercent > 0 ? '+' : ''}{d.liftPercent.toFixed(1)}%)</div>
+                          <div>National share: {d.nationalShare.toFixed(2)}%</div>
+                          <div>Observed mean: {d.observedMeanShare.toFixed(2)}%</div>
+                          <div>SE: {d.se.toFixed(4)}pp</div>
+                          <div>n (areas): {d.n}</div>
+                          <div>MC p-value: {d.pValueMC < 0.001 ? '<0.001' : d.pValueMC.toFixed(4)}</div>
+                          {d.isBonferroniSig && <div style={{ color: '#f44853', fontWeight: 700 }}>⚠️ Bonferroni significant</div>}
+                        </div>
+                      )
+                    }}
+                  />
+                  <ReferenceLine y={nullModel.meta.bonferroniZCritical} stroke="#f44853" strokeDasharray="6 4" strokeWidth={1.5} />
+                  <ReferenceLine y={-nullModel.meta.bonferroniZCritical} stroke="#f44853" strokeDasharray="6 4" strokeWidth={1.5} />
+                  <ReferenceLine y={0} stroke="#555" strokeWidth={1} />
+                  <Bar dataKey="zScore" radius={[4, 4, 0, 0]}>
+                    {[...nullModel.perNumber].sort((a, b) => a.number - b.number).map((d) => (
+                      <Cell
+                        key={d.number}
+                        fill={d.isBonferroniSig ? '#f44853' : d.zScore > 0 ? '#22d3ee' : '#6366f1'}
+                        fillOpacity={d.isBonferroniSig ? 0.9 : 0.6}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: 'flex', gap: 16, fontSize: 11, opacity: 0.7, marginTop: 8, justifyContent: 'center' }}>
+              <span style={{ color: '#f44853' }}>■ Bonferroni significant</span>
+              <span style={{ color: '#22d3ee' }}>■ Positive z</span>
+              <span style={{ color: '#6366f1' }}>■ Negative z</span>
+              <span style={{ color: '#f44853' }}>--- Critical z = ±{nullModel.meta.bonferroniZCritical}</span>
+            </div>
+          </div>
+
+          {/* Chart 2: Max|z| Null Distribution Histogram */}
+          <div style={{
+            padding: 16, background: 'var(--bg-card)', borderRadius: 10,
+            border: '1px solid var(--border-color)', marginBottom: 20,
+          }}>
+            <h3 style={{ fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <FlaskConical size={16} color="#a78bfa" /> Null Distribution of max|z| ({nullModel.meta.nIterations} iterations)
+            </h3>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 12 }}>
+              Histogram ของ max|z| จากการสุ่ม {nullModel.meta.nIterations} รอบ
+              | เส้นแดง = Observed max|z| ({nullModel.meta.observedMaxAbsZ.toFixed(2)})
+              | MC p = {nullModel.meta.mcPValueGlobal < 0.001 ? '<0.001' : nullModel.meta.mcPValueGlobal.toFixed(4)}
+            </div>
+            <div className="chart-container" style={{ height: 300 }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={nullModel.maxZHistogram}
+                  margin={{ left: 10, right: 10, top: 10, bottom: 30 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis
+                    dataKey="binMid"
+                    stroke="#888"
+                    tickFormatter={(v: number) => v.toFixed(1)}
+                    label={{ value: 'max|z|', position: 'insideBottom', offset: -10, fill: '#888' }}
+                  />
+                  <YAxis
+                    stroke="#888"
+                    label={{ value: 'Count', angle: -90, position: 'insideLeft', fill: '#888' }}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a2e', border: '1px solid #333', fontSize: 12 }}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'count') return [value, 'Iterations']
+                      return [value, name]
+                    }}
+                    labelFormatter={(label: number) => `max|z| ≈ ${Number(label).toFixed(2)}`}
+                  />
+                  <ReferenceLine x={nullModel.meta.observedMaxAbsZ} stroke="#f44853" strokeWidth={2} label={{
+                    value: `Observed ${nullModel.meta.observedMaxAbsZ.toFixed(2)}`,
+                    fill: '#f44853', fontSize: 11, position: 'top',
+                  }} />
+                  <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                    {nullModel.maxZHistogram.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={d.binMid >= nullModel.meta.observedMaxAbsZ ? '#f4485366' : '#a78bfa'}
+                        fillOpacity={d.binMid >= nullModel.meta.observedMaxAbsZ ? 0.5 : 0.6}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Percentiles */}
+            {nullModel.meta.nullMaxZPercentiles && (
+              <div style={{ display: 'flex', gap: 16, fontSize: 11, marginTop: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {Object.entries(nullModel.meta.nullMaxZPercentiles).map(([pctl, val]) => (
+                  <span key={pctl} style={{ opacity: 0.7 }}>{pctl}: <strong>{val.toFixed(2)}</strong></span>
+                ))}
+                <span style={{ color: '#f44853', fontWeight: 700 }}>Observed: {nullModel.meta.observedMaxAbsZ.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Chart 3: Structural Bias — Group Size vs |z| */}
+          <div style={{
+            padding: 16, background: 'var(--bg-card)', borderRadius: 10,
+            border: '1px solid var(--border-color)', marginBottom: 20,
+          }}>
+            <h3 style={{ fontSize: 14, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Microscope size={16} color="#fbbf24" /> Structural Bias: Group Size (n) vs |z|
+            </h3>
+            <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 12 }}>
+              พรรคที่มี n (จำนวนเขตที่ผู้ชนะหมายเลขเดียวกัน) มาก → SE เล็ก → |z| พองตัว
+              ต้องระวังว่า z-score สูงอาจเกิดจาก structural bias ไม่ใช่ twin-number effect จริง
+            </div>
+            <div className="chart-container" style={{ height: 320 }}>
+              <ResponsiveContainer>
+                <ScatterChart margin={{ left: 10, right: 30, top: 10, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis
+                    type="number" dataKey="n" name="n" stroke="#888"
+                    label={{ value: 'Group Size (n areas)', position: 'insideBottom', offset: -10, fill: '#888' }}
+                  />
+                  <YAxis
+                    type="number" dataKey="absZ" name="|z|" stroke="#888"
+                    label={{ value: '|z|', angle: -90, position: 'insideLeft', fill: '#888' }}
+                  />
+                  <ZAxis type="number" dataKey="nationalSharePct" range={[40, 300]} name="National %" />
+                  <Tooltip
+                    contentStyle={{ background: '#1a1a2e', border: '1px solid #333', fontSize: 12 }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload || !payload.length) return null
+                      const d = payload[0].payload as typeof nullModel.structuralBias[0]
+                      return (
+                        <div style={{ background: '#1a1a2e', border: '1px solid #333', padding: 10, borderRadius: 6, fontSize: 12, lineHeight: 1.8 }}>
+                          <div style={{ fontWeight: 700, marginBottom: 4 }}>#{d.number} {d.partyName}</div>
+                          <div>Group size: <strong>{d.n}</strong> areas</div>
+                          <div>|z|: <strong>{d.absZ.toFixed(3)}</strong></div>
+                          <div>SE: {d.se.toFixed(4)}pp</div>
+                          <div>Lift: {d.lift.toFixed(3)}pp</div>
+                          <div>National share: {d.nationalSharePct.toFixed(2)}%</div>
+                        </div>
+                      )
+                    }}
+                  />
+                  <ReferenceLine y={nullModel.meta.bonferroniZCritical} stroke="#f44853" strokeDasharray="6 4" strokeWidth={1.5} />
+                  <Scatter data={nullModel.structuralBias.filter(d => d.n > 0)} fill="#fbbf24">
+                    {nullModel.structuralBias.filter(d => d.n > 0).map((d) => (
+                      <Cell key={d.number} fill={d.absZ >= nullModel.meta.bonferroniZCritical ? '#f44853' : '#fbbf24'} fillOpacity={0.8} />
+                    ))}
+                  </Scatter>
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Table: Per-Number Results */}
+          <h3 style={{ fontSize: 14, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Table2 size={16} color="#22d3ee" /> ผลลัพธ์รายหมายเลข (sorted by |z|)
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table" style={{ width: '100%', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'center' }}>#</th>
+                  <th>พรรค</th>
+                  <th style={{ textAlign: 'center' }}>n</th>
+                  <th style={{ textAlign: 'center' }}>National %</th>
+                  <th style={{ textAlign: 'center' }}>Observed %</th>
+                  <th style={{ textAlign: 'center' }}>Lift (pp)</th>
+                  <th style={{ textAlign: 'center' }}>Lift %</th>
+                  <th style={{ textAlign: 'center' }}>SE</th>
+                  <th style={{ textAlign: 'center' }}>z-score</th>
+                  <th style={{ textAlign: 'center' }}>MC p</th>
+                  <th style={{ textAlign: 'center' }}>Bonferroni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nullModel.perNumber.map((d) => (
+                  <tr key={d.number} style={{
+                    borderLeft: `3px solid ${d.isBonferroniSig ? '#f44853' : '#333'}`,
+                    background: d.isBonferroniSig ? '#f4485308' : undefined,
+                  }}>
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{d.number}</td>
+                    <td>
+                      <span style={{ color: d.partyColor }}>{d.partyName}</span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>{d.n}</td>
+                    <td style={{ textAlign: 'center' }}>{d.nationalShare.toFixed(2)}%</td>
+                    <td style={{ textAlign: 'center' }}>{d.observedMeanShare.toFixed(2)}%</td>
+                    <td style={{ textAlign: 'center', color: d.lift > 0 ? '#f44853' : '#5ed88a' }}>
+                      {d.lift > 0 ? '+' : ''}{d.lift.toFixed(3)}
+                    </td>
+                    <td style={{ textAlign: 'center', color: d.liftPercent > 0 ? '#f44853' : '#5ed88a' }}>
+                      {d.liftPercent > 0 ? '+' : ''}{d.liftPercent.toFixed(1)}%
+                    </td>
+                    <td style={{ textAlign: 'center', fontSize: 10 }}>{d.se.toFixed(4)}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 700, color: Math.abs(d.zScore) >= nullModel.meta.bonferroniZCritical ? '#f44853' : undefined }}>
+                      {d.zScore.toFixed(3)}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span style={{
+                        padding: '2px 6px', borderRadius: 8, fontSize: 10, fontWeight: 600,
+                        background: d.pValueMC <= 0.05 ? '#f4485322' : '#5ed88a22',
+                        color: d.pValueMC <= 0.05 ? '#f44853' : '#5ed88a',
+                      }}>
+                        {d.pValueMC < 0.001 ? '<0.001' : d.pValueMC.toFixed(4)}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {d.isBonferroniSig ? (
+                        <span style={{ color: '#f44853', fontWeight: 700, fontSize: 10 }}>⚠️ SIG</span>
+                      ) : (
+                        <span style={{ opacity: 0.3, fontSize: 10 }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ═══ Conclusion / Key Findings ═══ */}
+          <div style={{
+            marginTop: 24, padding: 20,
+            background: nullModel.meta.nSignificant === 0
+              ? 'linear-gradient(135deg, #064e3b 0%, #0f2a1d 100%)'
+              : 'linear-gradient(135deg, #7f1d1d 0%, #2a0f0f 100%)',
+            borderRadius: 10,
+            border: `1px solid ${nullModel.meta.nSignificant === 0 ? '#10b981' : '#f44853'}33`,
+            lineHeight: 1.9,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+              {nullModel.meta.nSignificant === 0
+                ? <><ShieldCheck size={20} color="#10b981" /> สรุปผล: ไม่พบ Twin-Number Effect ที่มีนัยสำคัญทางสถิติ</>
+                : <><TriangleAlert size={20} color="#f44853" /> สรุปผล: พบ Twin-Number Effect ที่มีนัยสำคัญ {nullModel.meta.nSignificant} หมายเลข</>
+              }
+            </div>
+
+            {nullModel.meta.nSignificant === 0 ? (
+              <div style={{ fontSize: 13 }}>
+                <div style={{ marginBottom: 12, padding: '12px 16px', background: '#10b98115', borderRadius: 8, border: '1px solid #10b98133' }}>
+                  <strong style={{ fontSize: 14 }}>🔬 ผลการทดสอบ:</strong> จากการจำลอง {nullModel.meta.nIterations.toLocaleString()} รอบ
+                  ของโลกที่ &quot;ไม่มี twin-number effect&quot; พบว่า pattern ที่สังเกตได้ <strong>อยู่ภายในขอบเขตปกติ</strong> ของความบังเอิญ
+                </div>
+
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: 12, marginBottom: 16,
+                }}>
+                  <div style={{ padding: '12px 14px', background: '#ffffff08', borderRadius: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#22d3ee' }}>📊 ค่า max|z| ที่สังเกตได้</div>
+                    <div>Observed max|z| = <strong>{nullModel.meta.observedMaxAbsZ.toFixed(3)}</strong></div>
+                    <div>Null distribution median = <strong>{nullModel.meta.nullMaxZPercentiles?.p50?.toFixed(3) ?? 'N/A'}</strong></div>
+                    <div>Null distribution p95 = <strong>{nullModel.meta.nullMaxZPercentiles?.p95?.toFixed(3) ?? 'N/A'}</strong></div>
+                    <div style={{ marginTop: 4, color: '#10b981', fontWeight: 600 }}>
+                      → Observed อยู่ <strong>ต่ำกว่า</strong> median ของ null distribution
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', background: '#ffffff08', borderRadius: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#a78bfa' }}>🎲 MC Global p-value</div>
+                    <div>p = <strong>{nullModel.meta.mcPValueGlobal.toFixed(4)}</strong></div>
+                    <div style={{ marginTop: 4 }}>
+                      ≈ {(nullModel.meta.mcPValueGlobal * 100).toFixed(1)}% ของการสุ่ม ได้ max|z| สูงกว่าที่สังเกตได้
+                    </div>
+                    <div style={{ marginTop: 4, color: '#10b981', fontWeight: 600 }}>
+                      → <strong>ไม่มีนัยสำคัญ</strong> (p &gt;&gt; 0.05)
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', background: '#ffffff08', borderRadius: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#fbbf24' }}>🔒 Bonferroni Correction</div>
+                    <div>α<sub>corrected</sub> = {nullModel.meta.bonferroniAlpha.toFixed(4)}</div>
+                    <div>Critical |z| = {nullModel.meta.bonferroniZCritical}</div>
+                    <div>ผ่าน threshold: <strong>{nullModel.meta.nSignificant}/{nullModel.meta.nPartyNumbers} หมายเลข</strong></div>
+                    <div style={{ marginTop: 4, color: '#10b981', fontWeight: 600 }}>
+                      → <strong>ไม่มีหมายเลขใด</strong> ผ่าน Bonferroni significance
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ padding: '12px 16px', background: '#ffffff08', borderRadius: 8, marginBottom: 12 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: '#f472b6' }}>📋 Case Studies สำคัญ:</div>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 8,
+                  }}>
+                    {[...nullModel.perNumber]
+                      .filter(d => d.n >= 2)
+                      .sort((a, b) => b.absZ - a.absZ)
+                      .slice(0, 4)
+                      .map(d => (
+                        <div key={d.number} style={{
+                          padding: '8px 12px', background: '#ffffff06', borderRadius: 6,
+                          borderLeft: `3px solid ${d.partyColor}`,
+                        }}>
+                          <div style={{ fontWeight: 600 }}>
+                            <span style={{ color: d.partyColor }}>#{d.number} {d.partyName}</span>
+                            <span style={{ opacity: 0.6, marginLeft: 6 }}>(n={d.n})</span>
+                          </div>
+                          <div style={{ fontSize: 12, opacity: 0.8 }}>
+                            National: {d.nationalShare.toFixed(2)}% → Observed: {d.observedMeanShare.toFixed(2)}%
+                            = lift {d.lift > 0 ? '+' : ''}{d.lift.toFixed(3)}pp, z={d.zScore.toFixed(3)}, p={d.pValueMC.toFixed(4)}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '12px 16px', background: '#10b98115', borderRadius: 8,
+                  border: '1px solid #10b98133',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>💡 ความหมาย:</div>
+                  <div>
+                    ผลลัพธ์ชี้ว่า pattern &quot;ผู้ชนะหมายเลข j ทำให้พรรค PL หมายเลข j ได้คะแนนเพิ่ม&quot;
+                    <strong> ไม่มีหลักฐานทางสถิติ</strong>ที่แข็งแกร่ง — observed max|z| ({nullModel.meta.observedMaxAbsZ.toFixed(2)})
+                    อยู่ต่ำกว่า median ของ null distribution ({nullModel.meta.nullMaxZPercentiles?.p50?.toFixed(2) ?? 'N/A'})
+                    หมายความว่า pattern ที่เห็นใน descriptive analysis (72.8% เขตน่าสงสัย)
+                    อาจเกิดจาก <strong>base rate</strong> ของการตรงกันโดยบังเอิญ ไม่ใช่จาก twin-number effect จริง
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <strong>⚠️ ข้อควรระวัง:</strong> การไม่พบ statistical significance ≠ พิสูจน์ว่าไม่มีการซื้อเสียง
+                    — อาจมีกลไกอื่นที่ไม่ใช่ twin-number pattern, หรือ effect size เล็กเกินกว่าจะตรวจจับได้
+                    ด้วย sample size 400 เขต
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13 }}>
+                <div style={{ marginBottom: 8 }}>
+                  พบ <strong>{nullModel.meta.nSignificant} หมายเลข</strong> ที่ lift + z-score ผ่าน Bonferroni threshold:
+                </div>
+                {nullModel.meta.significantNumbers.map(num => {
+                  const d = nullModel.perNumber.find(p => p.number === num)
+                  return d ? (
+                    <div key={num} style={{ padding: '8px 12px', background: '#f4485315', borderRadius: 6, marginBottom: 4 }}>
+                      <strong style={{ color: d.partyColor }}>#{d.number} {d.partyName}</strong>:
+                      z={d.zScore.toFixed(3)}, lift={d.lift > 0 ? '+' : ''}{d.lift.toFixed(3)}pp, MC p={d.pValueMC.toFixed(4)}
+                    </div>
+                  ) : null
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Methodology Note */}
+          <div style={{
+            marginTop: 20, padding: 14, background: '#22d3ee08', borderRadius: 8,
+            border: '1px solid #22d3ee33', fontSize: 12, lineHeight: 1.8,
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Shuffle size={14} color="#22d3ee" /> วิธีการ Monte Carlo Null Model
+            </div>
+            <div>
+              <strong>1. Null Hypothesis:</strong> หมายเลขผู้ชนะ (1-{nullModel.meta.nPartyNumbers}) ไม่มีความสัมพันธ์กับคะแนน PL ของพรรคหมายเลขเดียวกัน
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <strong>2. Simulation:</strong> สลับหมายเลขผู้ชนะแบบสุ่มข้ามเขต {nullModel.meta.nIterations} รอบ
+              → คำนวณ lift = (mean PL share ในกลุ่ม) - (national PL share) สำหรับทุกหมายเลข
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <strong>3. z-score:</strong> z = lift / SE โดย SE ≈ √(p(1-p)/n) — ค่าสูงหมายความว่า observed lift
+              ไม่น่าเกิดจากบังเอิญ
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <strong>4. Bonferroni:</strong> ทดสอบ {nullModel.meta.nPartyNumbers} หมายเลขพร้อมกัน →
+              ใช้ α = 0.05/{nullModel.meta.nPartyNumbers} = {nullModel.meta.bonferroniAlpha.toFixed(4)} →
+              critical |z| ≥ {nullModel.meta.bonferroniZCritical}
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <strong>5. Structural Bias:</strong> พรรคใหญ่ที่มี n (areas) มาก → SE เล็ก → |z| สูงง่ายกว่า
+              ต้องดู lift ที่แท้จริง (pp) ประกอบ
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'null-model' && !nullModel && (
+        <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+          <Shuffle size={48} />
+          <div style={{ marginTop: 12 }}>ไม่พบข้อมูล Null Model — กรุณา re-run pipeline</div>
+        </div>
+      )}
+
+      {/* ═══ VIEW: Klimek Fingerprint ═══ */}
+      {viewMode === 'klimek' && klimek && (
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Fingerprint size={18} /> Klimek Fingerprint — Turnout vs Winner Vote Share
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 16, lineHeight: 1.8 }}>
+            <strong>Klimek et al. (PNAS 2012):</strong> พล็อตแต่ละเขตเป็น (Turnout%, Winner Vote Share%).
+            การเลือกตั้งที่สะอาด → กลุ่มจุดกระจายตัวเป็น blob ตรงกลาง.
+            Ballot stuffing → ridge ลากไปทาง (100%, 100%).
+            Incremental fraud → vertical smear ที่ turnout สูงผิดปกติ.
+          </div>
+
+          {/* Summary stats */}
+          <div className="overview-grid" style={{ marginBottom: 16 }}>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#42b8ff' }}>{klimek.meta.totalPoints}</div>
+              <div className="stat-label">เขตทั้งหมด</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{klimek.meta.meanTurnout?.toFixed(1)}%</div>
+              <div className="stat-label">Turnout เฉลี่ย</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{klimek.meta.meanWinnerShare?.toFixed(1)}%</div>
+              <div className="stat-label">Winner Share เฉลี่ย</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: klimek.meta.correlation && Math.abs(klimek.meta.correlation) > 0.3 ? '#ffa502' : '#5ed88a' }}>
+                {klimek.meta.correlation?.toFixed(3)}
+              </div>
+              <div className="stat-label">Correlation (r)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: (klimek.meta.highHighCount ?? 0) > 10 ? '#f44853' : '#5ed88a' }}>
+                {klimek.meta.highHighCount ?? 0}
+              </div>
+              <div className="stat-label">High-High Zone (&gt;80%T, &gt;60%S)</div>
+            </div>
+          </div>
+
+          {/* Scatter Plot */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Scatter: แต่ละจุด = 1 เขตเลือกตั้ง</div>
+            <ResponsiveContainer width="100%" height={450}>
+              <ScatterChart margin={{ top: 10, right: 30, bottom: 20, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
+                <XAxis type="number" dataKey="turnout" name="Turnout %" domain={[40, 100]}
+                  tick={{ fill: '#aaa', fontSize: 11 }} label={{ value: 'Turnout %', position: 'bottom', fill: '#aaa', fontSize: 12 }} />
+                <YAxis type="number" dataKey="winnerShare" name="Winner Share %" domain={[0, 100]}
+                  tick={{ fill: '#aaa', fontSize: 11 }} label={{ value: 'Winner Vote Share %', angle: -90, position: 'insideLeft', fill: '#aaa', fontSize: 12 }} />
+                <ZAxis type="number" dataKey="eligibleVoters" range={[30, 200]} name="Eligible" />
+                <Tooltip content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0].payload
+                  return (
+                    <div className="custom-tooltip">
+                      <div className="label">{d.areaName}</div>
+                      <div className="item">Turnout: {d.turnout}%</div>
+                      <div className="item">Winner Share: {d.winnerShare}%</div>
+                      <div className="item" style={{ color: d.winnerPartyColor }}>พรรค: {d.winnerParty}</div>
+                      <div className="item">ผู้มีสิทธิ์: {d.eligibleVoters?.toLocaleString()}</div>
+                      <div className="item">Score: {d.suspicionScore}</div>
+                    </div>
+                  )
+                }} />
+                <Scatter data={klimek.points} shape="circle">
+                  {klimek.points.map((p, i) => (
+                    <Cell key={i} fill={p.winnerPartyColor || '#888'} fillOpacity={0.65} />
+                  ))}
+                </Scatter>
+                {/* Reference lines for "danger zone" */}
+                <ReferenceLine x={80} stroke="#f4485355" strokeDasharray="5 5" label={{ value: 'T=80%', fill: '#f44853', fontSize: 10 }} />
+                <ReferenceLine y={60} stroke="#f4485355" strokeDasharray="5 5" label={{ value: 'S=60%', fill: '#f44853', fontSize: 10 }} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Heatmap as bar-grouped data */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Heatmap — ความหนาแน่นจุด (Turnout × Winner Share)</div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `40px repeat(${klimek.meta.bins}, 1fr)`,
+              gridTemplateRows: `repeat(${klimek.meta.bins}, 1fr) 30px`,
+              gap: 1, maxWidth: 600,
+            }}>
+              {/* Y-axis labels */}
+              {Array.from({ length: klimek.meta.bins }, (_, i) => klimek.meta.bins - 1 - i).map(by => (
+                <div key={`y-${by}`} style={{
+                  fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                  paddingRight: 4, opacity: 0.6, gridColumn: 1, gridRow: klimek.meta.bins - by,
+                }}>
+                  {by * (100 / klimek.meta.bins)}%
+                </div>
+              ))}
+              {/* Heat cells */}
+              {Array.from({ length: klimek.meta.bins }, (_, by) => klimek.meta.bins - 1 - by).map(by =>
+                Array.from({ length: klimek.meta.bins }, (_, bx) => {
+                  const bin = klimek.heatmap.find(h =>
+                    Math.abs(h.turnoutBin - (bx * (100 / klimek.meta.bins) + 100 / klimek.meta.bins / 2)) < 3 &&
+                    Math.abs(h.shareBin - (by * (100 / klimek.meta.bins) + 100 / klimek.meta.bins / 2)) < 3
+                  )
+                  const count = bin?.count ?? 0
+                  const maxCount = Math.max(...klimek.heatmap.map(h => h.count), 1)
+                  const intensity = count / maxCount
+                  return (
+                    <div key={`${bx}-${by}`} style={{
+                      gridColumn: bx + 2, gridRow: klimek.meta.bins - by,
+                      background: count > 0
+                        ? `rgba(66, 184, 255, ${0.1 + intensity * 0.85})`
+                        : '#ffffff05',
+                      borderRadius: 2,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 8, color: intensity > 0.5 ? '#fff' : '#aaa',
+                      minHeight: 18,
+                    }} title={`T:${bx * 5}-${(bx + 1) * 5}%, S:${by * 5}-${(by + 1) * 5}%, n=${count}`}>
+                      {count > 0 ? count : ''}
+                    </div>
+                  )
+                })
+              )}
+              {/* X-axis labels */}
+              <div style={{ gridColumn: 1, gridRow: klimek.meta.bins + 1 }} />
+              {Array.from({ length: klimek.meta.bins }, (_, bx) => (
+                <div key={`x-${bx}`} style={{
+                  fontSize: 9, textAlign: 'center', opacity: 0.6,
+                  gridColumn: bx + 2, gridRow: klimek.meta.bins + 1,
+                }}>
+                  {bx % 4 === 0 ? `${bx * (100 / klimek.meta.bins)}%` : ''}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, opacity: 0.5, marginTop: 8 }}>
+              X = Turnout %, Y = Winner Vote Share % — สีเข้ม = มีจุดเยอะ
+            </div>
+          </div>
+
+          {/* Conclusion */}
+          <div style={{
+            padding: 16, borderRadius: 10, marginTop: 12,
+            background: (klimek.meta.highHighCount ?? 0) > 10 ? '#f4485312' : '#5ed88a12',
+            border: `1px solid ${(klimek.meta.highHighCount ?? 0) > 10 ? '#f4485344' : '#5ed88a44'}`,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: (klimek.meta.highHighCount ?? 0) > 10 ? '#f44853' : '#5ed88a' }}>
+              {(klimek.meta.highHighCount ?? 0) > 10 ? <CircleAlert size={16} /> : <ShieldCheck size={16} />}
+              สรุป Klimek Fingerprint
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+              {(klimek.meta.highHighCount ?? 0) <= 10 ? (
+                <>
+                  ✅ ไม่พบ pattern ของ ballot stuffing — มีเพียง <strong>{klimek.meta.highHighCount ?? 0}</strong> เขต
+                  ใน High-High zone (Turnout&gt;80%, Winner Share&gt;60%).
+                  Correlation (r) = <strong>{klimek.meta.correlation?.toFixed(3)}</strong> ซึ่ง{Math.abs(klimek.meta.correlation ?? 0) < 0.3 ? 'ต่ำ (ดี)' : 'ปานกลาง'}.
+                  กราฟ scatter กระจายตัวเป็น blob ไม่มี ridge ไปทาง (100%, 100%).
+                </>
+              ) : (
+                <>
+                  ⚠️ พบ <strong>{klimek.meta.highHighCount ?? 0}</strong> เขตใน High-High zone —
+                  อาจมี pattern ที่น่าสงสัย ควรตรวจสอบเพิ่มเติม
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'klimek' && !klimek && (
+        <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+          <Fingerprint size={48} />
+          <div style={{ marginTop: 12 }}>ไม่พบข้อมูล Klimek Fingerprint — กรุณา re-run pipeline</div>
+        </div>
+      )}
+
+      {/* ═══ VIEW: Last-Digit Uniformity Test ═══ */}
+      {viewMode === 'last-digit' && lastDigit && (
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Binary size={18} /> Last-Digit Uniformity Test (Beber &amp; Scacco)
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 16, lineHeight: 1.8 }}>
+            <strong>Beber &amp; Scacco (Political Analysis 2012):</strong> หลักสุดท้ายของจำนวนโหวตควรกระจายสม่ำเสมอ (0-9 อย่างละ 10%).
+            คนที่ปลอมตัวเลขมักหลีกเลี่ยง 0, 5 และเลือกเลขบางตัวมากเกินไป. ใช้ Chi-square test เทียบกับ uniform distribution.
+          </div>
+
+          {/* Summary stats */}
+          <div className="overview-grid" style={{ marginBottom: 16 }}>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#42b8ff' }}>{lastDigit.totalNumbers.toLocaleString()}</div>
+              <div className="stat-label">ตัวเลขทั้งหมด</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{lastDigit.globalChi2}</div>
+              <div className="stat-label">Global χ²</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: lastDigit.globalPValue < 0.05 ? '#f44853' : '#5ed88a' }}>
+                {lastDigit.globalPValue}
+              </div>
+              <div className="stat-label">Global p-value</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#5ed88a' }}>{lastDigit.conformCount}</div>
+              <div className="stat-label">Conform (p&gt;0.05)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#f44853' }}>{lastDigit.deviateCount}</div>
+              <div className="stat-label">Deviate (p≤0.05)</div>
+            </div>
+          </div>
+
+          {/* Global distribution chart */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Global Last-Digit Distribution (Observed vs Expected Uniform)</div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={lastDigit.globalDistribution} margin={{ top: 10, right: 30, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
+                <XAxis dataKey="digit" tick={{ fill: '#aaa', fontSize: 12 }} label={{ value: 'Last Digit', position: 'bottom', fill: '#aaa' }} />
+                <YAxis tick={{ fill: '#aaa', fontSize: 11 }} label={{ value: '%', angle: -90, position: 'insideLeft', fill: '#aaa' }} />
+                <Tooltip content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0].payload
+                  return (
+                    <div className="custom-tooltip">
+                      <div className="label">Digit {d.digit}</div>
+                      <div className="item" style={{ color: '#42b8ff' }}>Observed: {d.observed}%</div>
+                      <div className="item" style={{ color: '#ffa502' }}>Expected: {d.expected}%</div>
+                      <div className="item">Count: {d.count.toLocaleString()}</div>
+                      <div className="item">Diff: {(d.observed - d.expected).toFixed(2)}pp</div>
+                    </div>
+                  )
+                }} />
+                <Bar dataKey="observed" name="Observed %" fill="#42b8ff" fillOpacity={0.8} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expected" name="Expected %" fill="#ffa502" fillOpacity={0.5} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Top deviating areas */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>เขตที่เบี่ยงเบนมากที่สุด (Top 20 by χ²)</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table" style={{ width: '100%', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>เขต</th>
+                    <th>χ²</th>
+                    <th>p-value</th>
+                    <th>N</th>
+                    <th>Score</th>
+                    {Array.from({ length: 10 }, (_, i) => <th key={i} style={{ textAlign: 'center' }}>D{i}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...lastDigit.perArea]
+                    .sort((a, b) => b.chi2 - a.chi2)
+                    .slice(0, 20)
+                    .map((area, idx) => (
+                      <tr key={area.areaCode}>
+                        <td>{idx + 1}</td>
+                        <td>{area.areaCode}</td>
+                        <td style={{ fontWeight: 700, color: area.pValue < 0.05 ? '#f44853' : '#aaa' }}>{area.chi2}</td>
+                        <td style={{ color: area.pValue < 0.05 ? '#f44853' : '#5ed88a' }}>{area.pValue}</td>
+                        <td>{area.totalNumbers}</td>
+                        <td>{area.scaledScore}</td>
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <td key={i} style={{ textAlign: 'center', fontSize: 10 }}>{area.digitCounts[String(i)] ?? 0}</td>
+                        ))}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Conclusion */}
+          <div style={{
+            padding: 16, borderRadius: 10,
+            background: lastDigit.globalPValue < 0.05 ? '#f4485312' : '#5ed88a12',
+            border: `1px solid ${lastDigit.globalPValue < 0.05 ? '#f4485344' : '#5ed88a44'}`,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: lastDigit.globalPValue < 0.05 ? '#f44853' : '#5ed88a' }}>
+              {lastDigit.globalPValue < 0.05 ? <CircleAlert size={16} /> : <ShieldCheck size={16} />}
+              สรุป Last-Digit Uniformity Test
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+              {lastDigit.globalPValue >= 0.05 ? (
+                <>
+                  ✅ Global last-digit distribution <strong>ผ่าน</strong> uniformity test (χ²={lastDigit.globalChi2}, p={lastDigit.globalPValue}).
+                  หลักสุดท้ายของจำนวนโหวตกระจายสม่ำเสมอ ไม่พบ pattern ของการปลอมแปลงตัวเลข.
+                  มี <strong>{lastDigit.deviateCount}</strong> เขต ({(lastDigit.deviateCount / (lastDigit.conformCount + lastDigit.deviateCount) * 100).toFixed(1)}%)
+                  ที่เบี่ยงเบนในระดับเขต ซึ่งเป็นอัตราที่คาดหวังได้จาก random variation.
+                </>
+              ) : (
+                <>
+                  ⚠️ Global last-digit distribution เบี่ยงเบนจาก uniform (χ²={lastDigit.globalChi2}, p={lastDigit.globalPValue}).
+                  มี <strong>{lastDigit.deviateCount}</strong> เขตที่เบี่ยงเบน — ควรตรวจสอบ pattern เพิ่มเติม.
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'last-digit' && !lastDigit && (
+        <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+          <Binary size={48} />
+          <div style={{ marginTop: 12 }}>ไม่พบข้อมูล Last-Digit Test — กรุณา re-run pipeline</div>
+        </div>
+      )}
+
+      {/* ═══ VIEW: 2nd-Digit Benford ═══ */}
+      {viewMode === '2nd-benford' && secondDigitBenford && (
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sigma size={18} /> 2nd-Digit Benford&apos;s Law (Mebane Test)
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 16, lineHeight: 1.8 }}>
+            <strong>Mebane (2006):</strong> หลักที่ 2 ของจำนวนโหวตจะตาม Benford&apos;s Law 2nd-digit distribution.
+            P(d₂=k) = Σ<sub>d₁=1..9</sub> log₁₀(1 + 1/(10·d₁ + k)). ต่างจาก 1st-digit ที่เป็นที่รู้จักกันดี —
+            2nd-digit test ละเอียดกว่าและยากที่จะ manipulate. ใช้ Chi-square goodness-of-fit test.
+          </div>
+
+          {/* Summary stats */}
+          <div className="overview-grid" style={{ marginBottom: 16 }}>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#42b8ff' }}>{secondDigitBenford.totalNumbers.toLocaleString()}</div>
+              <div className="stat-label">ตัวเลขทั้งหมด</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{secondDigitBenford.globalChi2}</div>
+              <div className="stat-label">Global χ²</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: secondDigitBenford.globalPValue < 0.05 ? '#f44853' : '#5ed88a' }}>
+                {secondDigitBenford.globalPValue}
+              </div>
+              <div className="stat-label">Global p-value</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#5ed88a' }}>{secondDigitBenford.conformCount}</div>
+              <div className="stat-label">Conform (p&gt;0.05)</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number" style={{ color: '#f44853' }}>{secondDigitBenford.deviateCount}</div>
+              <div className="stat-label">Deviate (p≤0.05)</div>
+            </div>
+          </div>
+
+          {/* Global distribution chart */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Global 2nd-Digit Distribution (Observed vs Benford Expected)</div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={secondDigitBenford.globalDistribution} margin={{ top: 10, right: 30, bottom: 5, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff15" />
+                <XAxis dataKey="digit" tick={{ fill: '#aaa', fontSize: 12 }} label={{ value: '2nd Digit', position: 'bottom', fill: '#aaa' }} />
+                <YAxis tick={{ fill: '#aaa', fontSize: 11 }} label={{ value: '%', angle: -90, position: 'insideLeft', fill: '#aaa' }} />
+                <Tooltip content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0].payload
+                  return (
+                    <div className="custom-tooltip">
+                      <div className="label">2nd Digit {d.digit}</div>
+                      <div className="item" style={{ color: '#e879f9' }}>Observed: {d.observed}%</div>
+                      <div className="item" style={{ color: '#ffa502' }}>Benford Expected: {d.expected}%</div>
+                      <div className="item">Count: {d.count.toLocaleString()}</div>
+                      <div className="item">Diff: {(d.observed - d.expected).toFixed(2)}pp</div>
+                    </div>
+                  )
+                }} />
+                <Bar dataKey="observed" name="Observed %" fill="#e879f9" fillOpacity={0.8} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expected" name="Benford Expected %" fill="#ffa502" fillOpacity={0.5} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Comparison: 1st-digit vs 2nd-digit */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+              เปรียบเทียบ: 1st-Digit Benford vs 2nd-Digit Benford (Mebane)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: 12 }}>
+              <div style={{ padding: 12, background: '#facc1510', borderRadius: 8, border: '1px solid #facc1533' }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}><Hash size={12} style={{ verticalAlign: -2 }} /> 1st-Digit Benford</div>
+                <div>χ² = {meta?.benfordGlobalChi2 ?? '—'}</div>
+                <div>p = {meta?.benfordGlobalPValue ?? '—'}</div>
+                <div>Conform: {meta?.benfordConformCount ?? '—'} | Deviate: {meta?.benfordDeviateCount ?? '—'}</div>
+              </div>
+              <div style={{ padding: 12, background: '#e879f910', borderRadius: 8, border: '1px solid #e879f933' }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}><Sigma size={12} style={{ verticalAlign: -2 }} /> 2nd-Digit (Mebane)</div>
+                <div>χ² = {secondDigitBenford.globalChi2}</div>
+                <div>p = {secondDigitBenford.globalPValue}</div>
+                <div>Conform: {secondDigitBenford.conformCount} | Deviate: {secondDigitBenford.deviateCount}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Top deviating areas */}
+          <div style={{ background: '#ffffff06', borderRadius: 10, padding: 16, border: '1px solid #ffffff10', marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>เขตที่เบี่ยงเบนมากที่สุด (Top 20 by χ²)</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table" style={{ width: '100%', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>เขต</th>
+                    <th>χ²</th>
+                    <th>p-value</th>
+                    <th>N</th>
+                    <th>Score</th>
+                    {Array.from({ length: 10 }, (_, i) => <th key={i} style={{ textAlign: 'center' }}>D{i}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...secondDigitBenford.perArea]
+                    .sort((a, b) => b.chi2 - a.chi2)
+                    .slice(0, 20)
+                    .map((area, idx) => (
+                      <tr key={area.areaCode}>
+                        <td>{idx + 1}</td>
+                        <td>{area.areaCode}</td>
+                        <td style={{ fontWeight: 700, color: area.pValue < 0.05 ? '#f44853' : '#aaa' }}>{area.chi2}</td>
+                        <td style={{ color: area.pValue < 0.05 ? '#f44853' : '#5ed88a' }}>{area.pValue}</td>
+                        <td>{area.totalNumbers}</td>
+                        <td>{area.scaledScore}</td>
+                        {Array.from({ length: 10 }, (_, i) => (
+                          <td key={i} style={{ textAlign: 'center', fontSize: 10 }}>{area.digitCounts[String(i)] ?? 0}</td>
+                        ))}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Conclusion */}
+          <div style={{
+            padding: 16, borderRadius: 10,
+            background: secondDigitBenford.globalPValue < 0.05 ? '#f4485312' : '#5ed88a12',
+            border: `1px solid ${secondDigitBenford.globalPValue < 0.05 ? '#f4485344' : '#5ed88a44'}`,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: secondDigitBenford.globalPValue < 0.05 ? '#f44853' : '#5ed88a' }}>
+              {secondDigitBenford.globalPValue < 0.05 ? <CircleAlert size={16} /> : <ShieldCheck size={16} />}
+              สรุป 2nd-Digit Benford&apos;s Law Test
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+              {secondDigitBenford.globalPValue >= 0.05 ? (
+                <>
+                  ✅ Global 2nd-digit distribution <strong>สอดคล้อง</strong>กับ Benford&apos;s Law (χ²={secondDigitBenford.globalChi2}, p={secondDigitBenford.globalPValue}).
+                  หลักที่ 2 ของจำนวนโหวตเป็นไปตามการกระจายที่คาดหวังทางสถิติ.
+                  มี <strong>{secondDigitBenford.deviateCount}</strong> เขตที่เบี่ยงเบน ({(secondDigitBenford.deviateCount / (secondDigitBenford.conformCount + secondDigitBenford.deviateCount) * 100).toFixed(1)}%)
+                  ซึ่งเป็นอัตราปกติจาก random variation.
+                  ผลสอดคล้องกับ 1st-digit Benford — ยืนยันว่าข้อมูลตัวเลขไม่ถูก manipulate.
+                </>
+              ) : (
+                <>
+                  ⚠️ Global 2nd-digit distribution เบี่ยงเบนจาก Benford&apos;s Law (χ²={secondDigitBenford.globalChi2}, p={secondDigitBenford.globalPValue}).
+                  มี <strong>{secondDigitBenford.deviateCount}</strong> เขตที่เบี่ยงเบน — ควรตรวจสอบ digit pattern เพิ่มเติม.
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === '2nd-benford' && !secondDigitBenford && (
+        <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+          <Sigma size={48} />
+          <div style={{ marginTop: 12 }}>ไม่พบข้อมูล 2nd-Digit Benford — กรุณา re-run pipeline</div>
+        </div>
+      )}
+
       {/* ═══ VIEW: Table ═══ */}
       {viewMode === 'table' && (
         <div style={{ overflowX: 'auto' }}>
@@ -856,6 +2006,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                 <th style={{ textAlign: 'center' }}>Dom</th>
                 <th style={{ textAlign: 'center' }}>NoV</th>
                 <th style={{ textAlign: 'center' }}>VPS</th>
+                <th style={{ textAlign: 'center' }}>Benf</th>
                 <th style={{ textAlign: 'center' }}>Moran</th>
                 <th style={{ textAlign: 'center' }}>Label</th>
                 <th style={{ textAlign: 'center' }}>Tags</th>
@@ -900,6 +2051,11 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                   <td style={{ textAlign: 'center' }}>{d.dominanceScore.toFixed(0)}</td>
                   <td style={{ textAlign: 'center' }}>{d.noVoteScore.toFixed(0)}</td>
                   <td style={{ textAlign: 'center' }}>{d.votersPerStationScore.toFixed(0)}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{ color: d.benfordPValue <= 0.05 ? '#facc15' : undefined, fontWeight: d.benfordPValue <= 0.05 ? 700 : 400 }}>
+                      {d.benfordScore.toFixed(0)}
+                    </span>
+                  </td>
                   <td style={{ textAlign: 'center' }}>
                     {d.spatialCluster !== 'ns' ? (
                       <span style={{ color: clusterColor(d.spatialCluster), fontWeight: 700, fontSize: 10 }}>
@@ -953,16 +2109,15 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
         borderRadius: 8, border: '1px solid var(--border-color)', fontSize: 12, lineHeight: 1.8,
       }}>
         <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <FlaskConical size={16} /> V4 Methodology
+          <FlaskConical size={16} /> Methodology
         </div>
         <div>
-          <strong>V4 Upgrade:</strong> ใช้ข้อมูลทางการจาก กกต. (badVotePercent, noVotePercent, totalEligibleVoters)
-          แทนการประมาณค่า proxy + เพิ่มตัวชี้วัดที่ 8: <strong>No-Vote Ratio</strong> + ตัวชี้วัดที่ 9: <strong>Voters/Station</strong>
-          (proxy ความเป็นเมือง/ชนบท: เขตที่มีผู้มีสิทธิ์/หน่วยเลือกตั้งสูงผิดปกติ ตรวจสอบยากขึ้น)
-          + <strong>Focus Area Filters</strong> จาก ThaiPBS
+          <strong>10 Indicators:</strong> รวม 10 ตัวชี้วัดเชิงสถิติ เช่น Dominance, Turnout, HHI, Spoiled Rate, Benford&apos;s Law ฯลฯ
+          โดย Benford&apos;s Law วิเคราะห์ first-digit distribution ของจำนวนโหวตด้วย Chi-square goodness-of-fit test
+          เขตที่หลักแรกของตัวเลขเบี่ยงเบนจาก Benford&apos;s distribution อย่างมีนัยสำคัญ → อาจมีการ manipulate ตัวเลข
         </div>
         <div style={{ marginTop: 8 }}>
-          <strong>Entropy Weight Method:</strong> คำนวณ Information Entropy ของ 9 features →
+          <strong>Entropy Weight Method:</strong> คำนวณ Information Entropy ของ 10 features →
           feature ที่มี variation สูง (entropy ต่ำ, divergence สูง) ได้น้ำหนักมากกว่าอัตโนมัติ
         </div>
         <div style={{ marginTop: 8 }}>

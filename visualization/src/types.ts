@@ -305,7 +305,7 @@ export interface ReferendumCorrelationItem {
   winnerPartyColor: string
 }
 
-// ─── Ensemble Suspicion Score V4 ───
+// ─── Ensemble Suspicion Score ───
 export interface EnsembleAnalysisItem {
   areaCode: string
   areaName: string
@@ -335,12 +335,18 @@ export interface EnsembleAnalysisItem {
   dominanceScore: number
   dominanceHHI: number
   dominanceWinnerShare: number
-  // V4: No-Vote indicator
+  // No-Vote indicator
   noVoteScore: number
   noVoteRatio: number
-  // V4: Voters per Station
+  // Voters per Station
   votersPerStationScore: number
   votersPerStation: number
+  // Benford's Law (1st-digit)
+  benfordScore: number
+  benfordChi2: number
+  benfordPValue: number
+  benfordDigitCounts: Record<string, number>
+  benfordTotalNumbers: number
   // Population & Statistics
   eligibleVoters: number
   populationWeight: number
@@ -358,7 +364,7 @@ export interface EnsembleAnalysisItem {
   winnerParty: string
   winnerPartyCode: string
   winnerPartyColor: string
-  // V4: Focus area tags & previous election info
+  // Focus area tags & previous election info
   focusAreaTags: string[]
   win66PartyCode: string
   win66PartyName: string
@@ -379,8 +385,14 @@ export interface EnsemblePartySummaryItem {
   hotspotCount: number
 }
 
+export interface BenfordDigitItem {
+  digit: number
+  expected: number
+  observed: number
+  count: number
+}
+
 export interface EnsembleMeta {
-  version: string
   totalAreas: number
   features: number
   entropyWeights: Record<string, number>
@@ -394,6 +406,155 @@ export interface EnsembleMeta {
   elevatedLabels: number
   focusAreaCounts: Record<string, number>
   officialSpoiledCount: number
+  // Benford's Law (1st-digit)
+  benfordGlobalChi2: number
+  benfordGlobalPValue: number
+  benfordGlobalDistribution: BenfordDigitItem[]
+  benfordTotalNumbers: number
+  benfordConformCount: number
+  benfordDeviateCount: number
+}
+
+// ─── Monte Carlo Null Model (Twin-Number Effect) ───
+export interface NullModelNumberResult {
+  number: number
+  partyName: string
+  partyColor: string
+  n: number
+  nationalShare: number
+  observedMeanShare: number
+  lift: number
+  liftPercent: number
+  se: number
+  zScore: number
+  absZ: number
+  pValueMC: number
+  isBonferroniSig: boolean
+  nullZMean: number
+  nullZStd: number
+}
+
+export interface NullModelHistogramBin {
+  binStart: number
+  binEnd: number
+  binMid: number
+  count: number
+  density: number
+}
+
+export interface NullModelStructuralBias {
+  number: number
+  partyName: string
+  partyColor: string
+  n: number
+  se: number
+  absZ: number
+  nationalSharePct: number
+  lift: number
+  expectedAbsZUnderNull: number
+  zRatio: number
+}
+
+export interface NullModelMeta {
+  nIterations: number
+  nAreas: number
+  nPartyNumbers: number
+  observedMaxAbsZ: number
+  mcPValueGlobal: number
+  bonferroniAlpha: number
+  bonferroniZCritical: number
+  significantNumbers: number[]
+  nSignificant: number
+  nullMaxZPercentiles: Record<string, number>
+}
+
+export interface NullModelAnalysis {
+  perNumber: NullModelNumberResult[]
+  maxZHistogram: NullModelHistogramBin[]
+  structuralBias: NullModelStructuralBias[]
+  meta: NullModelMeta
+}
+
+// ─── Klimek Fingerprint ───
+export interface KlimekPoint {
+  areaCode: string
+  areaName: string
+  province: string
+  turnout: number
+  winnerShare: number
+  winnerParty: string
+  winnerPartyColor: string
+  eligibleVoters: number
+  totalVotes: number
+  winnerVotes: number
+  suspicionScore: number
+}
+
+export interface KlimekHeatmapBin {
+  turnoutBin: number
+  shareBin: number
+  count: number
+  turnoutRange: [number, number]
+  shareRange: [number, number]
+}
+
+export interface KlimekMeta {
+  totalPoints: number
+  meanTurnout?: number
+  stdTurnout?: number
+  meanWinnerShare?: number
+  stdWinnerShare?: number
+  minTurnout?: number
+  maxTurnout?: number
+  minWinnerShare?: number
+  maxWinnerShare?: number
+  correlation?: number
+  highHighCount?: number
+  bins: number
+}
+
+export interface KlimekAnalysis {
+  points: KlimekPoint[]
+  heatmap: KlimekHeatmapBin[]
+  meta: KlimekMeta
+}
+
+// ─── Last-Digit Uniformity Test ───
+export interface DigitDistributionItem {
+  digit: number
+  expected: number
+  observed: number
+  count: number
+}
+
+export interface DigitTestPerArea {
+  areaCode: string
+  chi2: number
+  pValue: number
+  digitCounts: Record<string, number>
+  totalNumbers: number
+  scaledScore: number
+}
+
+export interface LastDigitAnalysis {
+  globalDistribution: DigitDistributionItem[]
+  globalChi2: number
+  globalPValue: number
+  totalNumbers: number
+  conformCount: number
+  deviateCount: number
+  perArea: DigitTestPerArea[]
+}
+
+// ─── 2nd-Digit Benford's Law (Mebane) ───
+export interface SecondDigitBenfordAnalysis {
+  globalDistribution: DigitDistributionItem[]
+  globalChi2: number
+  globalPValue: number
+  totalNumbers: number
+  conformCount: number
+  deviateCount: number
+  perArea: DigitTestPerArea[]
 }
 
 // ─── Full Election Data ───
@@ -420,8 +581,16 @@ export interface ElectionData {
   voteSplitting?: VoteSplittingItem[]
   winningMargins?: WinningMarginItem[]
   referendumCorrelation?: ReferendumCorrelationItem[]
-  // Ensemble model V4
+  // Ensemble model
   ensembleAnalysis?: EnsembleAnalysisItem[]
   ensemblePartySummary?: EnsemblePartySummaryItem[]
   ensembleMeta?: EnsembleMeta
+  // Monte Carlo Null Model
+  nullModelAnalysis?: NullModelAnalysis
+  // Klimek Fingerprint
+  klimekAnalysis?: KlimekAnalysis
+  // Last-Digit Uniformity Test
+  lastDigitAnalysis?: LastDigitAnalysis
+  // 2nd-Digit Benford's Law (Mebane)
+  secondDigitBenfordAnalysis?: SecondDigitBenfordAnalysis
 }
