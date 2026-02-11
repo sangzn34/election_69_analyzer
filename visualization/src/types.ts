@@ -305,6 +305,97 @@ export interface ReferendumCorrelationItem {
   winnerPartyColor: string
 }
 
+// ─── Ensemble Suspicion Score V4 ───
+export interface EnsembleAnalysisItem {
+  areaCode: string
+  areaName: string
+  province: string
+  suspicionScore: number
+  rawScore: number
+  finalScore: number
+  riskLevel: 'high' | 'medium' | 'low'
+  // Components (8 indicators)
+  gapScore: number
+  gapScaled: number
+  gapMpVotes: number
+  gapPlVotes: number
+  plDeviationScore: number
+  plDeviationZScore: number
+  plDevPartyName: string
+  plDevVotes: number
+  plDevBaseline: number
+  turnoutScore: number
+  turnoutDeviation: number
+  concentrationScore: number
+  candidateCount: number
+  consistencyScore: number
+  consistencyDiff: number
+  spoiledScore: number
+  spoiledRatio: number
+  dominanceScore: number
+  dominanceHHI: number
+  dominanceWinnerShare: number
+  // V4: No-Vote indicator
+  noVoteScore: number
+  noVoteRatio: number
+  // V4: Voters per Station
+  votersPerStationScore: number
+  votersPerStation: number
+  // Population & Statistics
+  eligibleVoters: number
+  populationWeight: number
+  pValue: number
+  confidence: 'very-high' | 'high' | 'moderate' | 'low'
+  // Spatial
+  moranI: number
+  spatialCluster: 'HH' | 'LL' | 'HL' | 'LH' | 'ns'
+  spatialLag: number
+  // Semi-supervised
+  semiSupervisedLabel: 'suspect' | 'elevated' | 'normal' | 'unlabeled'
+  // Entropy weights (same for all, stored for display)
+  entropyWeights: Record<string, number>
+  // Winner info
+  winnerParty: string
+  winnerPartyCode: string
+  winnerPartyColor: string
+  // V4: Focus area tags & previous election info
+  focusAreaTags: string[]
+  win66PartyCode: string
+  win66PartyName: string
+  isOfficialSpoiledData: boolean
+}
+
+export interface EnsemblePartySummaryItem {
+  partyCode: string
+  partyName: string
+  partyColor: string
+  totalAreas: number
+  avgScore: number
+  medianScore: number
+  highRiskCount: number
+  mediumRiskCount: number
+  lowRiskCount: number
+  significantCount: number
+  hotspotCount: number
+}
+
+export interface EnsembleMeta {
+  version: string
+  totalAreas: number
+  features: number
+  entropyWeights: Record<string, number>
+  globalMoranI: number
+  permutationIterations: number
+  hotspots: number
+  coldspots: number
+  pLt001: number
+  pLt005: number
+  suspectLabels: number
+  elevatedLabels: number
+  focusAreaCounts: Record<string, number>
+  officialSpoiledCount: number
+}
+
 // ─── Full Election Data ───
 export interface ElectionData {
   summary: Summary
@@ -329,4 +420,8 @@ export interface ElectionData {
   voteSplitting?: VoteSplittingItem[]
   winningMargins?: WinningMarginItem[]
   referendumCorrelation?: ReferendumCorrelationItem[]
+  // Ensemble model V4
+  ensembleAnalysis?: EnsembleAnalysisItem[]
+  ensemblePartySummary?: EnsemblePartySummaryItem[]
+  ensembleMeta?: EnsembleMeta
 }

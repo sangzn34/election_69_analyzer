@@ -10,6 +10,8 @@
     "prepare-data": "python3 scripts/prepare_data.py"
   },
   "dependencies": {
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "lucide-react": "^0.563.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.0"
