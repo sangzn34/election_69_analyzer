@@ -52,7 +52,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    fetch('/election_data.json')
+    fetch(`${import.meta.env.BASE_URL}election_data.json`)
       .then(res => res.json())
       .then((d: ElectionData) => {
         setData(d)

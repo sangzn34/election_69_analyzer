@@ -1,6 +1,6 @@
 import type { PartyMetaMap, NameToCodeMap } from '../types'
 
-const LOGO_BASE = '/party-logos'
+const LOGO_BASE = `${import.meta.env.BASE_URL}party-logos`
 
 /**
  * Get party logo URL from party code (e.g. "PARTY-0046")
