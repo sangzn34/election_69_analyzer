@@ -105,12 +105,12 @@ export default function CandidateNumbers({ data }: Props) {
 
       <div className="chart-container" style={{ minHeight: 420 }}>
         <ResponsiveContainer width="100%" height={420}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
-            <XAxis dataKey="number" tick={{ fill: '#9aa0a6', fontSize: 11 }} label={{ value: 'หมายเลขผู้สมัคร', position: 'bottom', fill: '#9aa0a6', offset: 0 }} />
+            <XAxis dataKey="number" tick={{ fill: '#9aa0a6', fontSize: 11 }} label={{ value: 'หมายเลขผู้สมัคร', position: 'bottom', fill: '#9aa0a6', offset: -5 }} />
             <YAxis tick={{ fill: '#9aa0a6', fontSize: 12 }} label={{ value: 'จำนวนเขต', angle: -90, position: 'insideLeft', fill: '#9aa0a6' }} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend formatter={(value: string) => <span style={{ color: '#e8eaed', fontSize: 12 }}>{value}</span>} />
+            <Legend verticalAlign="top" align="right" formatter={(value: string) => <span style={{ color: '#e8eaed', fontSize: 12 }}>{value}</span>} />
             <Bar dataKey="ชนะ" stackId="a" fill={partyColor} />
             <Bar dataKey="ไม่ชนะ" stackId="a" fill="#444444" />
           </BarChart>

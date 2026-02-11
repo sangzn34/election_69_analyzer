@@ -3,6 +3,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   BarChart, Bar,
 } from 'recharts'
+import { Microscope, BarChart3, Table2 } from 'lucide-react'
 import PartyLogo from './PartyLogo'
 import type { ReferendumCorrelationItem, NameToCodeMap } from '../types'
 
@@ -88,9 +89,9 @@ export default function ReferendumCorrelation({ data, nameToCodeMap }: Props) {
       </div>
 
       <div className="tabs" style={{ marginBottom: 16 }}>
-        <button className={`tab ${viewMode === 'scatter' ? 'active' : ''}`} onClick={() => setViewMode('scatter')}>🔵 Scatter</button>
-        <button className={`tab ${viewMode === 'bar' ? 'active' : ''}`} onClick={() => setViewMode('bar')}>📊 พรรค</button>
-        <button className={`tab ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}>📋 ตาราง</button>
+        <button className={`tab ${viewMode === 'scatter' ? 'active' : ''}`} onClick={() => setViewMode('scatter')}><Microscope size={14} /> Scatter</button>
+        <button className={`tab ${viewMode === 'bar' ? 'active' : ''}`} onClick={() => setViewMode('bar')}><BarChart3 size={14} /> พรรค</button>
+        <button className={`tab ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}><Table2 size={14} /> ตาราง</button>
       </div>
 
       {viewMode === 'scatter' && (

@@ -57,14 +57,14 @@ export default function ScatterAnalysis({ data }: Props) {
       </div>
 
       <div className="chart-container" style={{ minHeight: 500 }}>
-        <ResponsiveContainer width="100%" height={500}>
-          <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+        <ResponsiveContainer width="100%" height={520}>
+          <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
-            <XAxis type="number" dataKey="mpVotes" name="คะแนน ส.ส." tick={{ fill: '#9aa0a6', fontSize: 11 }} label={{ value: 'คะแนน ส.ส. เขตผู้ชนะ', position: 'bottom', fill: '#9aa0a6', offset: 0 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-            <YAxis type="number" dataKey="plVotes" name="คะแนน PL" tick={{ fill: '#9aa0a6', fontSize: 11 }} label={{ value: 'คะแนน PL พรรคส้มหล่น', angle: -90, position: 'insideLeft', fill: '#9aa0a6' }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+            <XAxis type="number" dataKey="mpVotes" name="คะแนน ส.ส." tick={{ fill: '#9aa0a6', fontSize: 11 }} label={{ value: 'คะแนน ส.ส. เขตผู้ชนะ', position: 'bottom', fill: '#9aa0a6', offset: -5, fontSize: 12 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+            <YAxis type="number" dataKey="plVotes" name="คะแนน PL" tick={{ fill: '#9aa0a6', fontSize: 11 }} label={{ value: 'คะแนน PL พรรคส้มหล่น', angle: -90, position: 'insideLeft', fill: '#9aa0a6', fontSize: 12 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
             <ZAxis range={[40, 40]} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend formatter={(value: string) => <span style={{ color: '#e8eaed', fontSize: 12 }}>{value}</span>} />
+            <Legend verticalAlign="top" align="right" formatter={(value: string) => <span style={{ color: '#e8eaed', fontSize: 12 }}>{value}</span>} />
             {showOnly !== 'suspicious' && <Scatter name="เขตปกติ" data={normalData} fill="#555555" opacity={0.5} />}
             {showOnly !== 'normal' && <Scatter name="เขตน่าสงสัย" data={suspiciousData} fill="#f44853" opacity={0.8} />}
           </ScatterChart>

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { BarChart3, CornerDownRight, HeartCrack } from 'lucide-react'
 import type { RetentionSummaryItem, WinnerRetentionItem, Lost66WinnerItem, Summary, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -77,9 +78,9 @@ export default function WinnerRetention({ retentionSummary, winnerRetention, los
       </div>
 
       <div className="filter-bar">
-        <button className={`tab ${view === 'overview' ? 'active' : ''}`} onClick={() => setView('overview')}>📊 ภาพรวมตามพรรค</button>
-        <button className={`tab ${view === 'switched' ? 'active' : ''}`} onClick={() => setView('switched')}>↪ ย้ายพรรค+ชนะ ({stats.switched})</button>
-        <button className={`tab ${view === 'lost' ? 'active' : ''}`} onClick={() => setView('lost')}>💔 ส.ส.66 ที่แพ้ ({lost66Winners.length})</button>
+        <button className={`tab ${view === 'overview' ? 'active' : ''}`} onClick={() => setView('overview')}><BarChart3 size={14} /> ภาพรวมตามพรรค</button>
+        <button className={`tab ${view === 'switched' ? 'active' : ''}`} onClick={() => setView('switched')}><CornerDownRight size={14} /> ย้ายพรรค+ชนะ ({stats.switched})</button>
+        <button className={`tab ${view === 'lost' ? 'active' : ''}`} onClick={() => setView('lost')}><HeartCrack size={14} /> ส.ส.66 ที่แพ้ ({lost66Winners.length})</button>
       </div>
 
       {view === 'overview' && (

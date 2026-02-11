@@ -848,6 +848,195 @@ def main():
     referendum_correlation.sort(key=lambda x: x['agreePercent'], reverse=True)
 
     # ═══════════════════════════════════════════════════════════════
+    # ── SPOILED BALLOT COMPARISON: MP Election vs Referendum ──
+    # Both ballots cast on the same day by the same voters.
+    # Uses referendum totalVotes as actual turnout (same voters cast both ballots).
+    #   MP non-valid  = refTotal - sum(MP candidate votes)
+    #   Ref non-valid = badVotes + noVotes (official กกต.)
+    # If MP non-valid rate >> Ref non-valid rate → potential anomaly.
+    # ═══════════════════════════════════════════════════════════════
+    spoiled_comparison = []
+    all_mp_nonvalid_pcts = []
+    all_ref_nonvalid_pcts = []
+    all_deltas = []
+
+    for ac in sorted(set(constituency_data.keys()) & set(referendum_data.keys())):
+        cd = constituency_data[ac]
+        rd = referendum_data[ac]
+        area_name = area_name_map.get(ac, f'เขต {ac}')
+        province = get_province(area_name)
+
+        # --- Referendum data (official) ---
+        ref_total = rd.get('totalVotes', 0)
+        ref_bad = rd.get('badVotes', 0)
+        ref_no = rd.get('noVotes', 0)
+        ref_good = rd.get('goodVotes', 0)
+        if ref_total == 0:
+            continue
+
+        ref_nonvalid = ref_bad + ref_no
+        ref_nonvalid_pct = ref_nonvalid / ref_total * 100
+
+        # --- MP election data ---
+        mp_file_path = os.path.join(MP_DIR, f'{ac}.json')
+        if not os.path.exists(mp_file_path):
+            continue
+        with open(mp_file_path, 'r', encoding='utf-8') as f:
+            mp_raw = json.load(f)
+        mp_valid = sum(e['voteTotal'] for e in mp_raw['entries'])
+
+        # Use refTotal as actual turnout (same voters)
+        mp_nonvalid = max(0, ref_total - mp_valid)
+        mp_nonvalid_pct = mp_nonvalid / ref_total * 100
+
+        delta = mp_nonvalid_pct - ref_nonvalid_pct  # positive = MP has more invalid
+
+        all_mp_nonvalid_pcts.append(mp_nonvalid_pct)
+        all_ref_nonvalid_pcts.append(ref_nonvalid_pct)
+        all_deltas.append(delta)
+
+        eligible = cd.get('totalEligibleVoters', 0)
+        winner_code = cd.get('winnerPartyCode', '')
+        spoiled_comparison.append({
+            'areaCode': ac,
+            'areaName': area_name,
+            'province': province,
+            'mpNonValidPercent': round(mp_nonvalid_pct, 2),
+            'mpNonValidVotes': mp_nonvalid,
+            'mpValidVotes': mp_valid,
+            'refNonValidPercent': round(ref_nonvalid_pct, 2),
+            'refBadVotes': ref_bad,
+            'refNoVotes': ref_no,
+            'refGoodVotes': ref_good,
+            'delta': round(delta, 2),
+            'totalBallots': ref_total,
+            'eligibleVoters': eligible,
+            'turnoutPercent': round(ref_total / eligible * 100, 1) if eligible > 0 else 0,
+            'winnerParty': get_party_name(winner_code),
+            'winnerPartyColor': get_party_color(winner_code),
+        })
+
+    # Compute summary stats
+    import statistics as _stat
+    spoiled_comparison_meta = {}
+    if all_deltas:
+        avg_mp = _stat.mean(all_mp_nonvalid_pcts)
+        avg_ref = _stat.mean(all_ref_nonvalid_pcts)
+        avg_delta = _stat.mean(all_deltas)
+        median_delta = _stat.median(all_deltas)
+        stdev_delta = _stat.stdev(all_deltas) if len(all_deltas) > 1 else 0
+        # Flag areas where delta > median + 2*stdev
+        threshold = median_delta + 2 * stdev_delta if stdev_delta > 0 else avg_delta + 5
+        for item in spoiled_comparison:
+            item['isOutlier'] = item['delta'] > threshold
+        outlier_count = sum(1 for item in spoiled_comparison if item['isOutlier'])
+        spoiled_comparison_meta = {
+            'totalAreas': len(spoiled_comparison),
+            'avgMpNonValid': round(avg_mp, 2),
+            'avgRefNonValid': round(avg_ref, 2),
+            'avgDelta': round(avg_delta, 2),
+            'medianDelta': round(median_delta, 2),
+            'stdevDelta': round(stdev_delta, 2),
+            'outlierThreshold': round(threshold, 2),
+            'outlierCount': outlier_count,
+        }
+    spoiled_comparison.sort(key=lambda x: x['delta'], reverse=True)
+    print(f"  📊 Spoiled Comparison: {len(spoiled_comparison)} areas, avg MP non-valid={spoiled_comparison_meta.get('avgMpNonValid', 0)}%, avg Ref non-valid={spoiled_comparison_meta.get('avgRefNonValid', 0)}%, avg Δ={spoiled_comparison_meta.get('avgDelta', 0)}%")
+
+    # ═══════════════════════════════════════════════════════════════
+    # ── NATIONAL ELECTION COMPARISON: 66 vs 69 ──
+    # Election 66 data from Thai PBS API (seats-by-party.json summaryVote)
+    # Election 69 data computed from constituency + referendum data
+    # ═══════════════════════════════════════════════════════════════
+    # --- Election 66 (hardcoded from API: election66-data.thaipbs.or.th) ---
+    e66 = {
+        'totalVotes': 39514973,
+        'goodVotes': 37190071,
+        'badVotes': 1457899,
+        'noVotes': 866885,
+        'eligible': 52287045,
+    }
+    e66_turnout = round(e66['totalVotes'] / e66['eligible'] * 100, 2)
+    e66_spoiled = round(e66['badVotes'] / e66['totalVotes'] * 100, 2)
+    e66_novote = round(e66['noVotes'] / e66['totalVotes'] * 100, 2)
+    e66_nonvalid = round((e66['badVotes'] + e66['noVotes']) / e66['totalVotes'] * 100, 2)
+
+    # --- Election 69 (compute from referendum totalVotes as turnout baseline) ---
+    e69_eligible = sum(cd.get('totalEligibleVoters', 0) for cd in constituency_data.values())
+    e69_valid_mp = 0
+    e69_ref_total = 0
+    e69_ref_bad = 0
+    e69_ref_no = 0
+    e69_ref_good = 0
+    for ac in constituency_data:
+        mp_path = os.path.join(MP_DIR, f'{ac}.json')
+        if os.path.exists(mp_path):
+            with open(mp_path, 'r', encoding='utf-8') as f:
+                mp_raw_69 = json.load(f)
+            e69_valid_mp += sum(e['voteTotal'] for e in mp_raw_69['entries'])
+        rd = referendum_data.get(ac)
+        if rd:
+            e69_ref_total += rd.get('totalVotes', 0)
+            e69_ref_bad += rd.get('badVotes', 0)
+            e69_ref_no += rd.get('noVotes', 0)
+            e69_ref_good += rd.get('goodVotes', 0)
+
+    # Use referendum totalVotes as actual ballots cast (most reliable count)
+    e69_total = e69_ref_total  # total people who came to vote
+    e69_mp_nonvalid = max(0, e69_total - e69_valid_mp)  # spoiled+novote for MP
+    e69_ref_nonvalid = e69_ref_bad + e69_ref_no  # spoiled+novote for referendum
+
+    e69_turnout = round(e69_total / e69_eligible * 100, 2) if e69_eligible > 0 else 0
+    e69_spoiled_mp = round(e69_mp_nonvalid / e69_total * 100, 2) if e69_total > 0 else 0
+    e69_spoiled_ref = round(e69_ref_nonvalid / e69_total * 100, 2) if e69_total > 0 else 0
+
+    election_comparison = {
+        'election66': {
+            'label': 'เลือกตั้ง 66',
+            'eligible': e66['eligible'],
+            'totalVotes': e66['totalVotes'],
+            'goodVotes': e66['goodVotes'],
+            'badVotes': e66['badVotes'],
+            'noVotes': e66['noVotes'],
+            'turnoutPercent': e66_turnout,
+            'spoiledPercent': e66_spoiled,
+            'noVotePercent': e66_novote,
+            'nonValidPercent': e66_nonvalid,
+        },
+        'election69mp': {
+            'label': 'เลือกตั้ง 69 (สส.)',
+            'eligible': e69_eligible,
+            'totalVotes': e69_total,
+            'goodVotes': e69_valid_mp,
+            'badVotes': e69_mp_nonvalid,  # combined spoiled+novote (can't separate)
+            'noVotes': 0,  # included in badVotes since we can't separate
+            'turnoutPercent': e69_turnout,
+            'spoiledPercent': e69_spoiled_mp,
+            'noVotePercent': 0,
+            'nonValidPercent': e69_spoiled_mp,  # same as spoiled since can't separate
+        },
+        'election69ref': {
+            'label': 'ประชามติ 69',
+            'eligible': e69_eligible,
+            'totalVotes': e69_total,
+            'goodVotes': e69_ref_good,
+            'badVotes': e69_ref_bad,
+            'noVotes': e69_ref_no,
+            'turnoutPercent': e69_turnout,
+            'spoiledPercent': round(e69_ref_bad / e69_total * 100, 2) if e69_total > 0 else 0,
+            'noVotePercent': round(e69_ref_no / e69_total * 100, 2) if e69_total > 0 else 0,
+            'nonValidPercent': e69_spoiled_ref,
+        },
+        'changes': {
+            'turnoutDelta': round(e69_turnout - e66_turnout, 2),
+            'nonValidDelta_mpVs66': round(e69_spoiled_mp - e66_nonvalid, 2),
+            'nonValidDelta_refVs66': round(e69_spoiled_ref - e66_nonvalid, 2),
+            'spoiledDelta_refVs66': round((e69_ref_bad / e69_total * 100 if e69_total > 0 else 0) - e66_spoiled, 2),
+        },
+    }
+    print(f"  🗳️ Election Comparison: 66 turnout={e66_turnout}% | 69 turnout={e69_turnout}% | 66 nonvalid={e66_nonvalid}% | 69 MP nonvalid={e69_spoiled_mp}% | 69 Ref nonvalid={e69_spoiled_ref}%")
+
+    # ═══════════════════════════════════════════════════════════════
     # ── ENSEMBLE SUSPICION SCORE ──
     # Combines 10 statistical indicators to produce a suspicion score
     # per constituency. Weights are data-driven (Entropy Weight Method).
@@ -2451,6 +2640,11 @@ def main():
         'voteSplitting': vote_splitting,
         'winningMargins': winning_margins,
         'referendumCorrelation': referendum_correlation,
+        # Spoiled Ballot Comparison (MP Election vs Referendum)
+        'spoiledComparison': spoiled_comparison,
+        'spoiledComparisonMeta': spoiled_comparison_meta,
+        # National Election Comparison (66 vs 69)
+        'electionComparison': election_comparison,
         # Ensemble model
         'ensembleAnalysis': ensemble_analysis,
         'ensemblePartySummary': ensemble_summary_list,

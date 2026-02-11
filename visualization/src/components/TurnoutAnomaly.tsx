@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   ScatterChart, Scatter, ZAxis,
 } from 'recharts'
+import { BarChart3, Microscope } from 'lucide-react'
 import type { TurnoutAnomalyItem } from '../types'
 
 interface TooltipProps {
@@ -59,8 +60,8 @@ export default function TurnoutAnomaly({ data }: Props) {
       </div>
 
       <div className="tabs" style={{ marginBottom: 16 }}>
-        <button className={`tab ${viewMode === 'chart' ? 'active' : ''}`} onClick={() => setViewMode('chart')}>📊 Bar Chart</button>
-        <button className={`tab ${viewMode === 'scatter' ? 'active' : ''}`} onClick={() => setViewMode('scatter')}>🔬 Scatter Plot</button>
+        <button className={`tab ${viewMode === 'chart' ? 'active' : ''}`} onClick={() => setViewMode('chart')}><BarChart3 size={14} /> Bar Chart</button>
+        <button className={`tab ${viewMode === 'scatter' ? 'active' : ''}`} onClick={() => setViewMode('scatter')}><Microscope size={14} /> Scatter Plot</button>
       </div>
 
       <div className="filter-bar" style={{ marginTop: 8 }}>

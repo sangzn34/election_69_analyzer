@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
+import { Scissors, CheckCircle, ListFilter } from 'lucide-react'
 import type { VoteSplittingItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -89,9 +90,9 @@ export default function VoteSplitting({ data, nameToCodeMap }: Props) {
       </div>
 
       <div className="tabs" style={{ marginBottom: 16 }}>
-        <button className={`tab ${filterMode === 'all' ? 'active' : ''}`} onClick={() => setFilterMode('all')}>ทั้งหมด</button>
-        <button className={`tab ${filterMode === 'split' ? 'active' : ''}`} onClick={() => setFilterMode('split')}>✂️ เลือกคนละพรรค</button>
-        <button className={`tab ${filterMode === 'same' ? 'active' : ''}`} onClick={() => setFilterMode('same')}>✅ พรรคเดียวกัน</button>
+        <button className={`tab ${filterMode === 'all' ? 'active' : ''}`} onClick={() => setFilterMode('all')}><ListFilter size={14} /> ทั้งหมด</button>
+        <button className={`tab ${filterMode === 'split' ? 'active' : ''}`} onClick={() => setFilterMode('split')}><Scissors size={14} /> เลือกคนละพรรค</button>
+        <button className={`tab ${filterMode === 'same' ? 'active' : ''}`} onClick={() => setFilterMode('same')}><CheckCircle size={14} /> พรรคเดียวกัน</button>
       </div>
 
       {/* Party breakdown bar chart */}

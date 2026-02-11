@@ -557,6 +557,64 @@ export interface SecondDigitBenfordAnalysis {
   perArea: DigitTestPerArea[]
 }
 
+// ─── Spoiled Ballot Comparison (MP vs Referendum) ───
+export interface SpoiledComparisonItem {
+  areaCode: string
+  areaName: string
+  province: string
+  mpNonValidPercent: number
+  mpNonValidVotes: number
+  mpValidVotes: number
+  refNonValidPercent: number
+  refBadVotes: number
+  refNoVotes: number
+  refGoodVotes: number
+  delta: number
+  totalBallots: number
+  eligibleVoters: number
+  turnoutPercent: number
+  winnerParty: string
+  winnerPartyColor: string
+  isOutlier: boolean
+}
+
+export interface SpoiledComparisonMeta {
+  totalAreas: number
+  avgMpNonValid: number
+  avgRefNonValid: number
+  avgDelta: number
+  medianDelta: number
+  stdevDelta: number
+  outlierThreshold: number
+  outlierCount: number
+}
+
+// ─── National Election Comparison (66 vs 69) ───
+export interface ElectionSummaryData {
+  label: string
+  eligible: number
+  totalVotes: number
+  goodVotes: number
+  badVotes: number
+  noVotes: number
+  turnoutPercent: number
+  spoiledPercent: number
+  noVotePercent: number
+  nonValidPercent: number
+}
+
+export interface ElectionComparison {
+  election66: ElectionSummaryData
+  election69mp: ElectionSummaryData
+  election69ref: ElectionSummaryData
+  changes: {
+    turnoutDelta: number
+    nonValidDelta_mpVs66: number
+    nonValidDelta_refVs66: number
+    spoiledDelta_refVs66: number
+  }
+}
+
 // ─── Full Election Data ───
 export interface ElectionData {
   summary: Summary
@@ -581,6 +639,11 @@ export interface ElectionData {
   voteSplitting?: VoteSplittingItem[]
   winningMargins?: WinningMarginItem[]
   referendumCorrelation?: ReferendumCorrelationItem[]
+  // Spoiled Ballot Comparison
+  spoiledComparison?: SpoiledComparisonItem[]
+  spoiledComparisonMeta?: SpoiledComparisonMeta
+  // National Election Comparison (66 vs 69)
+  electionComparison?: ElectionComparison
   // Ensemble model
   ensembleAnalysis?: EnsembleAnalysisItem[]
   ensemblePartySummary?: EnsemblePartySummaryItem[]

@@ -82,12 +82,12 @@ export default function RankDistribution({ data }: Props) {
 
       <div className="chart-container">
         <ResponsiveContainer width="100%" height={420}>
-          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
-            <XAxis dataKey="rank" tick={{ fill: '#9aa0a6', fontSize: 10 }} interval={0} label={{ value: 'อันดับในเขต', position: 'bottom', fill: '#9aa0a6', fontSize: 13, offset: 0 }} />
+            <XAxis dataKey="rank" tick={{ fill: '#9aa0a6', fontSize: 10 }} interval={0} label={{ value: 'อันดับในเขต', position: 'bottom', fill: '#9aa0a6', fontSize: 13, offset: -5 }} />
             <YAxis tick={{ fill: '#9aa0a6', fontSize: 12 }} label={{ value: 'จำนวนเขต', angle: -90, position: 'insideLeft', fill: '#9aa0a6', fontSize: 13 }} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ fontSize: 12 }} formatter={(value) => <span style={{ color: '#e8eaed' }}>{value}</span>} />
+            <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: 12 }} formatter={(value) => <span style={{ color: '#e8eaed' }}>{value}</span>} />
             <Bar dataKey="suspicious" name={`ส.ส. ผู้ชนะได้เบอร์ ${selectedParty} (จุดสังเกต)`} stackId="a" fill="#f11824" />
             <Bar dataKey="normal" name={`ส.ส. ผู้ชนะไม่ใช่เบอร์ ${selectedParty}`} stackId="a" fill="#555555" />
           </BarChart>

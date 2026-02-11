@@ -4,7 +4,7 @@ import {
   BarChart3, Target, PieChart, Globe, MapPin,
   TrendingUp, Microscope, Zap, Hash, Search, ClipboardList,
   ArrowLeftRight, Medal, FlaskConical, TrendingDown, Scissors,
-  Flag, Vote, TriangleAlert,
+  Flag, Vote, TriangleAlert, FileWarning,
 } from 'lucide-react'
 import SummaryCards from './components/SummaryCards'
 import TopBenefitingParties from './components/TopBenefitingParties'
@@ -23,6 +23,7 @@ import TurnoutAnomaly from './components/TurnoutAnomaly'
 import VoteSplitting from './components/VoteSplitting'
 import WinningMargin from './components/WinningMargin'
 import ReferendumCorrelation from './components/ReferendumCorrelation'
+import SpoiledComparison from './components/SpoiledComparison'
 import EnsembleAnalysis from './components/EnsembleAnalysis'
 import { ScrollArea } from './components/ui/ScrollArea'
 import { buildPartyNameToCode } from './utils/partyLogo'
@@ -31,7 +32,7 @@ type SectionId =
   | 'overview' | 'benefiting' | 'rank' | 'scatter' | 'anomaly'
   | 'candidate' | 'switcher' | 'retention' | 'party' | 'region'
   | 'province' | 'explorer' | 'list'
-  | 'turnout' | 'splitting' | 'margin' | 'referendum'
+  | 'turnout' | 'splitting' | 'margin' | 'referendum' | 'spoiled'
   | 'ensemble'
 
 interface MenuItem {
@@ -98,31 +99,37 @@ function App() {
       ],
     },
     {
-      title: 'วิเคราะห์เชิงลึก',
-      items: [
-        { id: 'rank' as SectionId, label: 'การกระจายอันดับ', emoji: <TrendingUp size={16} /> },
-        { id: 'scatter' as SectionId, label: 'Scatter Plot', emoji: <Microscope size={16} /> },
-        { id: 'anomaly' as SectionId, label: 'Anomaly Score', emoji: <Zap size={16} /> },
-        { id: 'candidate' as SectionId, label: 'เบอร์ผู้สมัคร', emoji: <Hash size={16} /> },
-        { id: 'explorer' as SectionId, label: 'เจาะลึกรายเขต', emoji: <Search size={16} /> },
-        { id: 'list' as SectionId, label: 'รายชื่อเขต', emoji: <ClipboardList size={16} /> },
-      ],
-    },
-    {
-      title: 'ผู้สมัคร',
-      items: [
-        { id: 'switcher' as SectionId, label: 'ย้ายพรรค', emoji: <ArrowLeftRight size={16} /> },
-        { id: 'retention' as SectionId, label: 'ส.ส.66 รักษาที่นั่ง', emoji: <Medal size={16} /> },
-      ],
-    },
-    {
-      title: 'โมเดลใหม่',
+      title: 'ตรวจสอบความผิดปกติ',
       items: [
         ...(data.ensembleAnalysis ? [{ id: 'ensemble' as const, label: 'Ensemble Score', emoji: <FlaskConical size={16} /> }] : []),
+        { id: 'scatter' as SectionId, label: 'Scatter Plot', emoji: <Microscope size={16} /> },
+        { id: 'anomaly' as SectionId, label: 'Anomaly Score', emoji: <Zap size={16} /> },
         ...(data.turnoutAnomaly ? [{ id: 'turnout' as const, label: 'Turnout ผิดปกติ', emoji: <TrendingDown size={16} /> }] : []),
+      ],
+    },
+    {
+      title: 'เปรียบเทียบ',
+      items: [
         ...(data.voteSplitting ? [{ id: 'splitting' as const, label: 'Vote Splitting', emoji: <Scissors size={16} /> }] : []),
         ...(data.winningMargins ? [{ id: 'margin' as const, label: 'Winning Margin', emoji: <Flag size={16} /> }] : []),
         ...(data.referendumCorrelation ? [{ id: 'referendum' as const, label: 'ประชามติ vs เลือกตั้ง', emoji: <Vote size={16} /> }] : []),
+        ...(data.spoiledComparison ? [{ id: 'spoiled' as const, label: 'บัตรไม่สมบูรณ์ 66 vs 69', emoji: <FileWarning size={16} /> }] : []),
+      ],
+    },
+    {
+      title: 'ข้อมูลผู้สมัคร',
+      items: [
+        { id: 'candidate' as SectionId, label: 'เบอร์ผู้สมัคร', emoji: <Hash size={16} /> },
+        { id: 'switcher' as SectionId, label: 'ย้ายพรรค', emoji: <ArrowLeftRight size={16} /> },
+        { id: 'retention' as SectionId, label: 'ส.ส.66 รักษาที่นั่ง', emoji: <Medal size={16} /> },
+        { id: 'rank' as SectionId, label: 'การกระจายอันดับ', emoji: <TrendingUp size={16} /> },
+      ],
+    },
+    {
+      title: 'ค้นหา',
+      items: [
+        { id: 'explorer' as SectionId, label: 'เจาะลึกรายเขต', emoji: <Search size={16} /> },
+        { id: 'list' as SectionId, label: 'รายชื่อเขต', emoji: <ClipboardList size={16} /> },
       ],
     },
   ].filter(g => g.items.length > 0)
@@ -202,6 +209,7 @@ function App() {
           {activeSection === 'splitting' && data.voteSplitting && <VoteSplitting data={data.voteSplitting} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
           {activeSection === 'referendum' && data.referendumCorrelation && <ReferendumCorrelation data={data.referendumCorrelation} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
         </main>
       </div>

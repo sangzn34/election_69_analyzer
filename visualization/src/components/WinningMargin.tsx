@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { Flame, Mountain } from 'lucide-react'
 import type { WinningMarginItem } from '../types'
 
 interface TooltipProps {
@@ -81,8 +82,8 @@ export default function WinningMargin({ data }: Props) {
       </div>
 
       <div className="tabs" style={{ marginBottom: 16 }}>
-        <button className={`tab ${viewMode === 'close' ? 'active' : ''}`} onClick={() => setViewMode('close')}>🔥 สูสีที่สุด</button>
-        <button className={`tab ${viewMode === 'landslide' ? 'active' : ''}`} onClick={() => setViewMode('landslide')}>🏔️ ชนะขาดลอย</button>
+        <button className={`tab ${viewMode === 'close' ? 'active' : ''}`} onClick={() => setViewMode('close')}><Flame size={14} /> สูสีที่สุด</button>
+        <button className={`tab ${viewMode === 'landslide' ? 'active' : ''}`} onClick={() => setViewMode('landslide')}><Mountain size={14} /> ชนะขาดลอย</button>
       </div>
 
       <div className="filter-bar" style={{ marginTop: 8 }}>
