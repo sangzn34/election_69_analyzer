@@ -115,6 +115,7 @@ body {
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
+  overflow: hidden;
 }
 
 .section-title {
@@ -306,11 +307,15 @@ body {
 
 .menu-toggle-icon {
   font-size: 1.1rem;
+  display: flex;
+  align-items: center;
 }
 
 .menu-toggle-arrow {
   font-size: 0.7rem;
   opacity: 0.5;
+  display: flex;
+  align-items: center;
 }
 
 /* Sub-tabs inside components still use .tab */
@@ -747,17 +752,31 @@ body {
     padding: 8px;
     border: 1px solid var(--border);
     opacity: 1;
+    margin: 0 12px;
+    width: calc(100% - 24px);
   }
 
   .menu-toggle {
     display: flex;
+    margin: 0 12px 12px;
+    width: calc(100% - 24px);
   }
 
-  .app { padding: 12px; }
-  .header { padding: 32px 16px; }
+  .app { padding: 0; }
+  .header {
+    padding: 32px 16px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
   .header h1 { font-size: 1.4rem; }
-  .section { padding: 20px; }
-  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); padding: 0 12px; }
+  .section {
+    padding: 20px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
   .pie-grid { grid-template-columns: 1fr; }
 }
 

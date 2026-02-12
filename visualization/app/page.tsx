@@ -213,7 +213,7 @@ export default function HomePage() {
       {/* Mobile menu toggle */}
       <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
         <span className="menu-toggle-icon">{menuOpen ? <X size={16} /> : <Menu size={16} />}</span>
-        <span>{activeLabel ? <>{activeLabel.emoji} {activeLabel.label}</> : 'เมนู'}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{activeLabel ? <>{activeLabel.emoji} {activeLabel.label}</> : 'เมนู'}</span>
         <span className="menu-toggle-arrow">{menuOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
       </button>
 

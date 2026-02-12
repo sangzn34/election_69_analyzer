@@ -185,7 +185,7 @@ export default function BallotBarcode() {
             border: '1px solid var(--border)',
             animation: 'fadeIn 0.3s ease',
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 12 }}>
               <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>เลขที่บัตร (N)</div>
                 <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)', letterSpacing: 1 }}>
@@ -234,6 +234,7 @@ export default function BallotBarcode() {
               color: '#94a3b8',
               lineHeight: 1.6,
               overflowX: 'auto',
+              whiteSpace: 'nowrap',
             }}>
               <span style={{ color: '#60a5fa' }}>M</span> = ⌊<span style={{ color: '#fbbf24' }}>N</span> / 20⌋ + 1 = {result.formula}
             </div>
@@ -274,9 +275,11 @@ export default function BallotBarcode() {
           marginBottom: 20,
         }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <BookOpen size={16} /> ประวัติการถอดรหัส
+            <BookOpen size={16} /> ประวัติการถอดรหัส ({history.length})
           </h3>
-          <div style={{ overflowX: 'auto' }}>
+
+          {/* Desktop: table */}
+          <div className="history-table-desktop" style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -298,6 +301,48 @@ export default function BallotBarcode() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile: card list */}
+          <div className="history-cards-mobile">
+            {history.map(h => (
+              <div key={h.input} style={{
+                background: 'var(--bg-primary)',
+                borderRadius: 10,
+                padding: 12,
+                border: '1px solid var(--border)',
+                marginBottom: 8,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontFamily: 'monospace', color: 'var(--accent)', fontWeight: 600, fontSize: 15, letterSpacing: 0.5 }}>
+                    {h.input}
+                  </div>
+                  <div style={{
+                    background: '#ef444422',
+                    color: '#ef4444',
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                  }}>
+                    เล่ม {h.bookId}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                  <span>ลำดับ <strong style={{ color: 'var(--text-primary)' }}>{h.pos}/20</strong></span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{h.formula}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <style>{`
+            .history-cards-mobile { display: none; }
+            @media (max-width: 640px) {
+              .history-table-desktop { display: none !important; }
+              .history-cards-mobile { display: block; }
+            }
+          `}</style>
         </div>
       )}
 
@@ -315,7 +360,9 @@ export default function BallotBarcode() {
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.6 }}>
           ทดลองสแกนบาร์โค้ดจากภาพบัตรเลือกตั้ง ส.ส. บัญชีรายชื่อ 4 ใบ จากหน่วยเลือกตั้งเดียวกัน (กาพรรคต่างกัน)
         </p>
-        <div style={{ overflowX: 'auto' }}>
+
+        {/* Desktop: table */}
+        <div className="pptv-table-desktop" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -348,8 +395,60 @@ export default function BallotBarcode() {
             </tbody>
           </table>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 10, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Info size={11} /> ใบที่ 1-3 มาจากเล่มเดียวกัน (A1890253) ใบที่ 4 มาจากเล่มก่อนหน้า (A1890247) — ทั้ง 4 ใบมาจากหน่วยเดียวกัน
+
+        {/* Mobile: card list */}
+        <div className="pptv-cards-mobile">
+          {PPTV_EVIDENCE.map((e, i) => {
+            const d = decodeBallot(e.ballot)!
+            return (
+              <div key={e.ballot} style={{
+                background: 'var(--bg-primary)',
+                borderRadius: 10,
+                padding: 12,
+                border: '1px solid var(--border)',
+                marginBottom: 8,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                      fontSize: 11, fontWeight: 700,
+                    }}>{i + 1}</span>
+                    <span style={{
+                      display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                      background: e.color,
+                    }} />
+                    <span style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}>{e.party}</span>
+                  </div>
+                  <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-primary)' }}>{d.posInBook}/20</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontFamily: 'monospace', color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}>{e.ballot}</div>
+                  <div style={{
+                    background: '#ef444422', color: '#ef4444',
+                    fontFamily: 'monospace', fontWeight: 700, fontSize: 12,
+                    padding: '2px 8px', borderRadius: 5,
+                  }}>
+                    {d.bookId}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <style>{`
+          .pptv-cards-mobile { display: none; }
+          @media (max-width: 640px) {
+            .pptv-table-desktop { display: none !important; }
+            .pptv-cards-mobile { display: block; }
+          }
+        `}</style>
+
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 10, display: 'flex', alignItems: 'start', gap: 4 }}>
+          <Info size={11} style={{ flexShrink: 0, marginTop: 2 }} /> <span>ใบที่ 1-3 มาจากเล่มเดียวกัน (A1890253) ใบที่ 4 มาจากเล่มก่อนหน้า (A1890247) — ทั้ง 4 ใบมาจากหน่วยเดียวกัน</span>
         </div>
       </div>
 
@@ -377,10 +476,10 @@ export default function BallotBarcode() {
             fontWeight: 600,
           }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Calculator size={16} style={{ color: 'var(--accent)' }} /> อธิบายหลักคณิตศาสตร์
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', minWidth: 0 }}>
+            <Calculator size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} /> <span>อธิบายหลักคณิตศาสตร์</span>
           </span>
-          {showMath ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          <span style={{ flexShrink: 0 }}>{showMath ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
         </button>
 
         {showMath && (
@@ -393,26 +492,40 @@ export default function BallotBarcode() {
               marginBottom: 14,
               fontSize: 14,
               lineHeight: 2,
+              overflowX: 'auto',
             }}>
               <div style={{ color: '#94a3b8', marginBottom: 4 }}>{'// กำหนดให้'}</div>
-              <div><span style={{ color: '#60a5fa' }}>M</span> <span style={{ color: '#94a3b8' }}>=</span> เล่มที่ <span style={{ color: '#94a3b8' }}>(Book ID)</span></div>
-              <div><span style={{ color: '#fbbf24' }}>N</span> <span style={{ color: '#94a3b8' }}>=</span> เลขที่บัตร <span style={{ color: '#94a3b8' }}>(Ballot Number จากบาร์โค้ด)</span></div>
+              <div style={{ whiteSpace: 'nowrap' }}><span style={{ color: '#60a5fa' }}>M</span> <span style={{ color: '#94a3b8' }}>=</span> เล่มที่ <span style={{ color: '#94a3b8' }}>(Book ID)</span></div>
+              <div style={{ whiteSpace: 'nowrap' }}><span style={{ color: '#fbbf24' }}>N</span> <span style={{ color: '#94a3b8' }}>=</span> เลขที่บัตร <span style={{ color: '#94a3b8' }}>(Ballot Number จากบาร์โค้ด)</span></div>
               <div style={{ marginTop: 8, color: '#94a3b8' }}>{'// สูตร'}</div>
               <div style={{ fontSize: 16, color: '#f0f0f0' }}>
                 <span style={{ color: '#60a5fa' }}>M</span> = ⌊<span style={{ color: '#fbbf24' }}>N</span> / 20⌋ + 1
               </div>
             </div>
 
-            <p>
+            <p style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
               <strong style={{ color: 'var(--text-primary)' }}>ทำไม 20?</strong> — กกต. ระบุว่าบัตรเลือกตั้ง 1 เล่ม มี <strong style={{ color: 'var(--accent)' }}>20 ฉบับ</strong>
             </p>
 
-            <p>
-              <strong style={{ color: 'var(--text-primary)' }}>แปลว่าอะไร?</strong> — เลขที่บัตร (N) จะเรียงลำดับต่อเนื่องไปเรื่อยๆ ไม่มีซ้ำ
-              แต่ละเล่มจะมี 20 ใบ ดังนั้นเล่มที่ 1 = บัตร 1–20, เล่มที่ 2 = บัตร 21–40, เล่มที่ 3 = บัตร 41–60 ...
+            <p style={{ overflowWrap: 'break-word' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>แปลว่าอะไร?</strong> — เลขที่บัตร (N) จะเรียงลำดับต่อเนื่องไปเรื่อยๆ ไม่มีซ้ำ แต่ละเล่มจะมี 20 ใบ
             </p>
+            <div style={{
+              fontFamily: 'monospace',
+              fontSize: 12,
+              lineHeight: 1.8,
+              color: '#94a3b8',
+              background: 'var(--bg-primary)',
+              borderRadius: 6,
+              padding: '8px 12px',
+              overflowX: 'auto',
+              whiteSpace: 'nowrap',
+              marginBottom: 8,
+            }}>
+              เล่ม 1 = บัตร 1–20 &nbsp;|&nbsp; เล่ม 2 = บัตร 21–40 &nbsp;|&nbsp; เล่ม 3 = บัตร 41–60 ...
+            </div>
 
-            <p>
+            <p style={{ overflowWrap: 'break-word' }}>
               <strong style={{ color: 'var(--text-primary)' }}>ห่วงโซ่การสืบย้อน:</strong>
             </p>
 
@@ -420,9 +533,12 @@ export default function BallotBarcode() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              flexWrap: 'wrap',
+              flexWrap: 'nowrap',
               margin: '8px 0 12px',
               fontSize: 13,
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: 4,
             }}>
               {[
                 { label: 'บาร์โค้ด', color: 'var(--accent)' },
@@ -458,12 +574,13 @@ export default function BallotBarcode() {
               marginTop: 12,
             }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>💡 ตัวอย่างคำนวณ</div>
-              <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 2, color: '#94a3b8' }}>
-                <div>บาร์โค้ด: <span style={{ color: 'var(--accent)' }}>A03398985</span></div>
-                <div>N = 3398985</div>
-                <div>M = ⌊3398985 / 20⌋ + 1 = ⌊169949.25⌋ + 1 = 169949 + 1 = <span style={{ color: '#ef4444', fontWeight: 700 }}>169950</span></div>
-                <div>เล่มที่ = <span style={{ color: '#ef4444', fontWeight: 700 }}>A0169950</span></div>
-                <div>ลำดับในเล่ม = 3398985 mod 20 = <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>5</span> (ใบที่ 5 จาก 20)</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 2, color: '#94a3b8', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ whiteSpace: 'nowrap' }}>บาร์โค้ด: <span style={{ color: 'var(--accent)' }}>A03398985</span></div>
+                <div style={{ whiteSpace: 'nowrap' }}>N = 3398985</div>
+                <div style={{ whiteSpace: 'nowrap' }}>M = ⌊3398985 / 20⌋ + 1</div>
+                <div style={{ whiteSpace: 'nowrap' }}>&nbsp; = ⌊169949.25⌋ + 1 = 169949 + 1 = <span style={{ color: '#ef4444', fontWeight: 700 }}>169950</span></div>
+                <div style={{ whiteSpace: 'nowrap' }}>เล่มที่ = <span style={{ color: '#ef4444', fontWeight: 700 }}>A0169950</span></div>
+                <div style={{ whiteSpace: 'nowrap' }}>ลำดับในเล่ม = 3398985 mod 20 = <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>5</span> (ใบที่ 5 จาก 20)</div>
               </div>
             </div>
 
@@ -525,10 +642,10 @@ export default function BallotBarcode() {
             fontWeight: 600,
           }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Building2 size={16} style={{ color: '#60a5fa' }} /> คำชี้แจงจาก กกต.
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', minWidth: 0 }}>
+            <Building2 size={16} style={{ color: '#60a5fa', flexShrink: 0 }} /> <span>คำชี้แจงจาก กกต.</span>
           </span>
-          {showECT ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          <span style={{ flexShrink: 0 }}>{showECT ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
         </button>
 
         {showECT && (
@@ -595,10 +712,10 @@ export default function BallotBarcode() {
             fontWeight: 600,
           }}
         >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Gavel size={16} style={{ color: '#eab308' }} /> กฎหมายที่เกี่ยวข้อง — พ.ร.บ.ประกอบ รธน. เลือกตั้ง ส.ส.
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left', minWidth: 0 }}>
+            <Gavel size={16} style={{ color: '#eab308', flexShrink: 0 }} /> <span>กฎหมายที่เกี่ยวข้อง — พ.ร.บ.ประกอบ รธน. เลือกตั้ง ส.ส.</span>
           </span>
-          {showLaw ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          <span style={{ flexShrink: 0 }}>{showLaw ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
         </button>
 
         {showLaw && (
@@ -720,7 +837,7 @@ export default function BallotBarcode() {
         <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
           <Scale size={16} style={{ color: '#eab308' }} /> สรุปประเด็น
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, fontSize: 13 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, fontSize: 13 }}>
           <div style={{
             background: 'var(--bg-primary)',
             borderRadius: 8,
