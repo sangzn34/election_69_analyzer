@@ -642,6 +642,121 @@ export interface SwitcherVoteComparisonItem {
   portrait66: string
 }
 
+// ─── MP vs Party-List Comparison (ส้มหล่น) ───
+export interface MpPlPartyCompare {
+  partyCode: string
+  partyName: string
+  partyColor: string
+  mpVotes: number
+  plVotes: number
+  diff: number
+  diffPercent: number
+}
+
+export interface MpPlPartySummary extends MpPlPartyCompare {
+  totalMpVotes: number
+  totalPlVotes: number
+  areasPlHigher: number
+  areasPlLower: number
+}
+
+export interface MpPlAreaItem {
+  areaCode: string
+  areaName: string
+  province: string
+  totalMpVotes: number
+  totalPlVotes: number
+  totalDiff: number
+  mpWinnerParty: string
+  mpWinnerColor: string
+  parties: MpPlPartyCompare[]
+}
+
+export interface MpPlComparisonMeta {
+  totalAreas: number
+  totalPartiesWithMp: number
+  totalPartiesWithPl: number
+  partiesPlHigher: number
+  partiesPlLower: number
+  topGainer: string
+  topLoser: string
+}
+
+export interface MpPlComparison {
+  partySummary: MpPlPartySummary[]
+  perArea: MpPlAreaItem[]
+  meta: MpPlComparisonMeta
+}
+
+// ─── Ballot Imbalance (บัตรเขย่ง) ───
+export interface BallotImbalancePartyDiff {
+  partyCode: string
+  partyName: string
+  partyColor: string
+  mpVotes: number
+  plVotes: number
+  diff: number
+}
+
+export interface BallotImbalanceAreaItem {
+  areaCode: string
+  areaName: string
+  province: string
+  mpTotalVotes: number
+  plTotalVotes: number
+  diff: number
+  absDiff: number
+  diffPercent: number
+  direction: 'mp' | 'pl' | 'equal'
+  eligibleVoters: number
+  turnoutPercent: number
+  winnerParty: string
+  winnerPartyColor: string
+  zScore: number
+  isOutlier: boolean
+  topPartyDiffs: BallotImbalancePartyDiff[]
+}
+
+export interface BallotImbalanceHistogramBucket {
+  bucket: number
+  count: number
+}
+
+export interface BallotImbalanceProvince {
+  province: string
+  mpTotal: number
+  plTotal: number
+  diff: number
+  diffPercent: number
+  areas: number
+  outliers: number
+}
+
+export interface BallotImbalanceMaxItem {
+  areaCode: string
+  areaName: string
+  diffPercent: number
+  diff: number
+}
+
+export interface BallotImbalanceMeta {
+  totalAreas: number
+  meanDiffPercent: number
+  stdDiffPercent: number
+  outlierCount: number
+  mpHigherCount: number
+  plHigherCount: number
+  maxMpHigher: BallotImbalanceMaxItem | null
+  maxPlHigher: BallotImbalanceMaxItem | null
+}
+
+export interface BallotImbalance {
+  perArea: BallotImbalanceAreaItem[]
+  histogram: BallotImbalanceHistogramBucket[]
+  byProvince: BallotImbalanceProvince[]
+  meta: BallotImbalanceMeta
+}
+
 // ─── Full Election Data ───
 export interface ElectionData {
   summary: Summary
@@ -685,4 +800,8 @@ export interface ElectionData {
   lastDigitAnalysis?: LastDigitAnalysis
   // 2nd-Digit Benford's Law (Mebane)
   secondDigitBenfordAnalysis?: SecondDigitBenfordAnalysis
+  // MP vs Party-List Comparison (ส้มหล่น)
+  mpPlComparison?: MpPlComparison
+  // Ballot Imbalance (บัตรเขย่ง)
+  ballotImbalance?: BallotImbalance
 }

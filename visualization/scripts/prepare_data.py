@@ -1052,6 +1052,279 @@ def main():
         })
     vote_splitting.sort(key=lambda x: (not x['isSplit'], -abs(x['mpWinnerPercent'] - x['plWinnerPercent'])))
 
+    # ===== NEW TAB: MP vs Party-List Vote Comparison (ส้มหล่น Analysis) =====
+    # Compare actual vote counts per party: MP candidate votes vs PL party votes in each district
+    mp_pl_party_totals = {}  # partyCode -> {mpVotes, plVotes}
+    mp_pl_per_area = []
+
+    for mp_file in mp_files:
+        area_code = os.path.basename(mp_file).replace('.json', '')
+        pl_file = os.path.join(PL_DIR, f'{area_code}.json')
+        if not os.path.exists(pl_file):
+            continue
+
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_raw = json.load(f)
+        with open(pl_file, 'r', encoding='utf-8') as f:
+            pl_raw = json.load(f)
+
+        area_name = area_name_map.get(area_code, f'เขต {area_code}')
+        province = get_province(area_name)
+
+        # Build per-party MP vote map (one candidate per party per area)
+        mp_party_votes = {}
+        for entry in mp_raw['entries']:
+            pc = entry['partyCode']
+            mp_party_votes[pc] = mp_party_votes.get(pc, 0) + entry['voteTotal']
+
+        # Build per-party PL vote map
+        pl_party_votes = {}
+        for entry in pl_raw['entries']:
+            pc = entry['partyCode']
+            pl_party_votes[pc] = entry['voteTotal']
+
+        # Union of all parties in this area
+        all_parties = set(mp_party_votes.keys()) | set(pl_party_votes.keys())
+
+        total_mp = sum(mp_party_votes.values())
+        total_pl = sum(pl_party_votes.values())
+
+        # Per-area breakdown (top parties only)
+        area_parties = []
+        for pc in all_parties:
+            mv = mp_party_votes.get(pc, 0)
+            pv = pl_party_votes.get(pc, 0)
+            diff = pv - mv
+            area_parties.append({
+                'partyCode': pc,
+                'partyName': get_party_name(pc),
+                'partyColor': get_party_color(pc),
+                'mpVotes': mv,
+                'plVotes': pv,
+                'diff': diff,
+                'diffPercent': round(diff / mv * 100, 1) if mv > 0 else (100.0 if pv > 0 else 0),
+            })
+            # Accumulate national totals
+            if pc not in mp_pl_party_totals:
+                mp_pl_party_totals[pc] = {'mpVotes': 0, 'plVotes': 0}
+            mp_pl_party_totals[pc]['mpVotes'] += mv
+            mp_pl_party_totals[pc]['plVotes'] += pv
+
+        # Sort by absolute diff (largest PL surplus first)
+        area_parties.sort(key=lambda x: x['diff'], reverse=True)
+
+        # Winner info
+        cd = constituency_data.get(area_code, {})
+        mp_winner_code = cd.get('winnerPartyCode', '')
+
+        mp_pl_per_area.append({
+            'areaCode': area_code,
+            'areaName': area_name,
+            'province': province,
+            'totalMpVotes': total_mp,
+            'totalPlVotes': total_pl,
+            'totalDiff': total_pl - total_mp,
+            'mpWinnerParty': get_party_name(mp_winner_code),
+            'mpWinnerColor': get_party_color(mp_winner_code),
+            'parties': area_parties[:10],  # top 10 per area
+        })
+
+    # Build national party summary: sorted by PL surplus (ส้มหล่น)
+    mp_pl_party_summary = []
+    for pc, totals in mp_pl_party_totals.items():
+        mv = totals['mpVotes']
+        pv = totals['plVotes']
+        diff = pv - mv
+        mp_pl_party_summary.append({
+            'partyCode': pc,
+            'partyName': get_party_name(pc),
+            'partyColor': get_party_color(pc),
+            'totalMpVotes': mv,
+            'totalPlVotes': pv,
+            'diff': diff,
+            'diffPercent': round(diff / mv * 100, 1) if mv > 0 else (100.0 if pv > 0 else 0),
+            # Count areas where this party has PL > MP
+            'areasPlHigher': sum(1 for a in mp_pl_per_area for p in a['parties'] if p['partyCode'] == pc and p['diff'] > 0),
+            'areasPlLower': sum(1 for a in mp_pl_per_area for p in a['parties'] if p['partyCode'] == pc and p['diff'] < 0),
+        })
+
+    # Sort by PL surplus (descending) = ส้มหล่น ranking
+    mp_pl_party_summary.sort(key=lambda x: x['diff'], reverse=True)
+
+    # Also sort per-area by absolute totalDiff
+    mp_pl_per_area.sort(key=lambda x: abs(x['totalDiff']), reverse=True)
+
+    mp_pl_meta = {
+        'totalAreas': len(mp_pl_per_area),
+        'totalPartiesWithMp': sum(1 for p in mp_pl_party_summary if p['totalMpVotes'] > 0),
+        'totalPartiesWithPl': sum(1 for p in mp_pl_party_summary if p['totalPlVotes'] > 0),
+        'partiesPlHigher': sum(1 for p in mp_pl_party_summary if p['diff'] > 0),
+        'partiesPlLower': sum(1 for p in mp_pl_party_summary if p['diff'] < 0),
+        'topGainer': mp_pl_party_summary[0]['partyName'] if mp_pl_party_summary else '',
+        'topLoser': mp_pl_party_summary[-1]['partyName'] if mp_pl_party_summary else '',
+    }
+
+    print(f"  📊 MP vs PL Comparison: {len(mp_pl_per_area)} areas, {len(mp_pl_party_summary)} parties")
+    print(f"     PL > MP (ส้มหล่น): {mp_pl_meta['partiesPlHigher']} parties | PL < MP: {mp_pl_meta['partiesPlLower']} parties")
+    if mp_pl_party_summary:
+        print(f"     Top gainer: {mp_pl_party_summary[0]['partyName']} (+{mp_pl_party_summary[0]['diff']:,} votes)")
+        print(f"     Top loser: {mp_pl_party_summary[-1]['partyName']} ({mp_pl_party_summary[-1]['diff']:,} votes)")
+
+    # ===== NEW TAB: Ballot Imbalance (บัตรเขย่ง) =====
+    # Compare TOTAL vote count on MP ballot vs PL ballot per area
+    # If someone stuffs MP ballots without matching PL, or vice versa, totals diverge
+    import statistics as stats_module
+
+    ballot_imbalance = []
+    all_pct_diffs = []
+
+    for mp_file in mp_files:
+        area_code = os.path.basename(mp_file).replace('.json', '')
+        pl_file = os.path.join(PL_DIR, f'{area_code}.json')
+        if not os.path.exists(pl_file):
+            continue
+
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_raw = json.load(f)
+        with open(pl_file, 'r', encoding='utf-8') as f:
+            pl_raw = json.load(f)
+
+        area_name = area_name_map.get(area_code, f'เขต {area_code}')
+        province = get_province(area_name)
+
+        mp_total = sum(e['voteTotal'] for e in mp_raw['entries'])
+        pl_total = sum(e['voteTotal'] for e in pl_raw['entries'])
+        diff = mp_total - pl_total
+        avg_votes = (mp_total + pl_total) / 2 if (mp_total + pl_total) > 0 else 1
+        diff_pct = round(diff / avg_votes * 100, 2)
+
+        # Get eligible voters & winner info from constituency data
+        cd = constituency_data.get(area_code, {})
+        eligible = cd.get('totalEligibleVoters', 0)
+        winner_code = cd.get('winnerPartyCode', '')
+        turnout_pct = cd.get('voteProgressPercent', 0)
+
+        # Which ballot is higher?
+        direction = 'mp' if diff > 0 else 'pl' if diff < 0 else 'equal'
+
+        # Per-party breakdown: which parties gained/lost most between MP and PL
+        mp_party = {}
+        for e in mp_raw['entries']:
+            mp_party[e['partyCode']] = mp_party.get(e['partyCode'], 0) + e['voteTotal']
+        pl_party = {}
+        for e in pl_raw['entries']:
+            pl_party[e['partyCode']] = e['voteTotal']
+
+        # Top 3 parties with biggest PL-MP diff (positive = PL gained)
+        party_diffs = []
+        for pc in set(mp_party.keys()) | set(pl_party.keys()):
+            mv = mp_party.get(pc, 0)
+            pv = pl_party.get(pc, 0)
+            party_diffs.append({
+                'partyCode': pc,
+                'partyName': get_party_name(pc),
+                'partyColor': get_party_color(pc),
+                'mpVotes': mv,
+                'plVotes': pv,
+                'diff': pv - mv,
+            })
+        party_diffs.sort(key=lambda x: abs(x['diff']), reverse=True)
+
+        ballot_imbalance.append({
+            'areaCode': area_code,
+            'areaName': area_name,
+            'province': province,
+            'mpTotalVotes': mp_total,
+            'plTotalVotes': pl_total,
+            'diff': diff,
+            'absDiff': abs(diff),
+            'diffPercent': diff_pct,
+            'direction': direction,
+            'eligibleVoters': eligible,
+            'turnoutPercent': turnout_pct,
+            'winnerParty': get_party_name(winner_code),
+            'winnerPartyColor': get_party_color(winner_code),
+            'topPartyDiffs': party_diffs[:5],
+        })
+        all_pct_diffs.append(diff_pct)
+
+    # Compute z-scores for outlier detection
+    if len(all_pct_diffs) >= 2:
+        mean_pct = stats_module.mean(all_pct_diffs)
+        std_pct = stats_module.stdev(all_pct_diffs)
+        for item in ballot_imbalance:
+            z = (item['diffPercent'] - mean_pct) / std_pct if std_pct > 0 else 0
+            item['zScore'] = round(z, 2)
+            item['isOutlier'] = abs(z) > 2
+    else:
+        for item in ballot_imbalance:
+            item['zScore'] = 0
+            item['isOutlier'] = False
+
+    ballot_imbalance.sort(key=lambda x: abs(x['diffPercent']), reverse=True)
+
+    # Build histogram buckets
+    bucket_size = 1  # 1% buckets
+    histogram = {}
+    for pct in all_pct_diffs:
+        bucket = round(pct / bucket_size) * bucket_size
+        histogram[bucket] = histogram.get(bucket, 0) + 1
+    histogram_data = [{'bucket': k, 'count': v} for k, v in sorted(histogram.items())]
+
+    # Aggregate by province
+    province_imbalance = {}
+    for item in ballot_imbalance:
+        prov = item['province']
+        if prov not in province_imbalance:
+            province_imbalance[prov] = {'mpTotal': 0, 'plTotal': 0, 'areas': 0, 'outliers': 0}
+        province_imbalance[prov]['mpTotal'] += item['mpTotalVotes']
+        province_imbalance[prov]['plTotal'] += item['plTotalVotes']
+        province_imbalance[prov]['areas'] += 1
+        if item['isOutlier']:
+            province_imbalance[prov]['outliers'] += 1
+    province_imbalance_list = []
+    for prov, pi in province_imbalance.items():
+        avg = (pi['mpTotal'] + pi['plTotal']) / 2 if (pi['mpTotal'] + pi['plTotal']) > 0 else 1
+        province_imbalance_list.append({
+            'province': prov,
+            'mpTotal': pi['mpTotal'],
+            'plTotal': pi['plTotal'],
+            'diff': pi['mpTotal'] - pi['plTotal'],
+            'diffPercent': round((pi['mpTotal'] - pi['plTotal']) / avg * 100, 2),
+            'areas': pi['areas'],
+            'outliers': pi['outliers'],
+        })
+    province_imbalance_list.sort(key=lambda x: abs(x['diffPercent']), reverse=True)
+
+    outlier_count = sum(1 for item in ballot_imbalance if item['isOutlier'])
+    mp_higher_count = sum(1 for item in ballot_imbalance if item['diff'] > 0)
+    pl_higher_count = sum(1 for item in ballot_imbalance if item['diff'] < 0)
+
+    ballot_imbalance_meta = {
+        'totalAreas': len(ballot_imbalance),
+        'meanDiffPercent': round(mean_pct, 3) if len(all_pct_diffs) >= 2 else 0,
+        'stdDiffPercent': round(std_pct, 3) if len(all_pct_diffs) >= 2 else 0,
+        'outlierCount': outlier_count,
+        'mpHigherCount': mp_higher_count,
+        'plHigherCount': pl_higher_count,
+        'maxMpHigher': max((item for item in ballot_imbalance if item['diff'] > 0), key=lambda x: x['diffPercent'], default=None),
+        'maxPlHigher': min((item for item in ballot_imbalance if item['diff'] < 0), key=lambda x: x['diffPercent'], default=None),
+    }
+    # Simplify max items
+    for key in ['maxMpHigher', 'maxPlHigher']:
+        if ballot_imbalance_meta[key]:
+            item = ballot_imbalance_meta[key]
+            ballot_imbalance_meta[key] = {
+                'areaCode': item['areaCode'],
+                'areaName': item['areaName'],
+                'diffPercent': item['diffPercent'],
+                'diff': item['diff'],
+            }
+
+    print(f"  📦 Ballot Imbalance (บัตรเขย่ง): {len(ballot_imbalance)} areas")
+    print(f"     Mean Δ%={mean_pct:.3f}%, σ={std_pct:.3f}%")
+    print(f"     MP > PL: {mp_higher_count} | PL > MP: {pl_higher_count} | Outliers (|z|>2): {outlier_count}")
+
     # ===== NEW TAB: Winning Margin (closest & landslide races) =====
     winning_margins = []
     for ac, cd in constituency_data.items():
@@ -2885,6 +3158,19 @@ def main():
         'turnoutAnomaly': turnout_anomaly,
         'voteSplitting': vote_splitting,
         'winningMargins': winning_margins,
+        # MP vs Party-List Comparison (ส้มหล่น analysis)
+        'mpPlComparison': {
+            'partySummary': mp_pl_party_summary,
+            'perArea': mp_pl_per_area[:100],  # top 100 areas by absolute diff
+            'meta': mp_pl_meta,
+        },
+        # Ballot Imbalance (บัตรเขย่ง) — MP total vs PL total per area
+        'ballotImbalance': {
+            'perArea': ballot_imbalance,
+            'histogram': histogram_data,
+            'byProvince': province_imbalance_list,
+            'meta': ballot_imbalance_meta,
+        },
         # Spoiled Ballot Comparison (MP Election vs Referendum)
         'spoiledComparison': spoiled_comparison,
         'spoiledComparisonMeta': spoiled_comparison_meta,

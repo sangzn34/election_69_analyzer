@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { ElectionData, NameToCodeMap } from './types'
 import {
   BarChart3, Target, PieChart, Globe, MapPin, Map,
@@ -27,6 +27,8 @@ import SpoiledComparison from './components/SpoiledComparison'
 import EnsembleAnalysis from './components/EnsembleAnalysis'
 import ProvinceMap from './components/ProvinceMap'
 import SwitcherVoteComparison from './components/SwitcherVoteComparison'
+import MpPlComparison from './components/MpPlComparison'
+import BallotImbalance from './components/BallotImbalance'
 import { ScrollArea } from './components/ui/ScrollArea'
 import { buildPartyNameToCode } from './utils/partyLogo'
 
@@ -35,7 +37,7 @@ type SectionId =
   | 'candidate' | 'switcher' | 'switcherDetail' | 'switcherVote' | 'retention' | 'party' | 'region'
   | 'province' | 'map' | 'explorer' | 'list'
   | 'turnout' | 'splitting' | 'margin' | 'spoiled'
-  | 'ensemble'
+  | 'ensemble' | 'mpPl' | 'ballotImbalance'
 
 interface MenuItem {
   id: SectionId
@@ -48,11 +50,33 @@ interface MenuGroup {
   items: MenuItem[]
 }
 
+const ALL_SECTIONS: SectionId[] = [
+  'overview', 'benefiting', 'rank', 'scatter', 'anomaly',
+  'candidate', 'switcher', 'switcherDetail', 'switcherVote', 'retention', 'party', 'region',
+  'province', 'map', 'explorer', 'list',
+  'turnout', 'splitting', 'margin', 'spoiled',
+  'ensemble', 'mpPl', 'ballotImbalance',
+]
+
+function getSectionFromURL(): SectionId {
+  const params = new URLSearchParams(window.location.search)
+  const s = params.get('section')
+  if (s && ALL_SECTIONS.includes(s as SectionId)) return s as SectionId
+  return 'overview'
+}
+
 function App() {
   const [data, setData] = useState<ElectionData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState<SectionId>('overview')
+  const [activeSection, setActiveSection] = useState<SectionId>(getSectionFromURL)
   const [menuOpen, setMenuOpen] = useState(false)
+
+  /* Sync URL → state on popstate (browser back/forward) */
+  useEffect(() => {
+    const onPop = () => setActiveSection(getSectionFromURL())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}election_data.json`)
@@ -71,6 +95,18 @@ function App() {
     () => (data ? buildPartyNameToCode(data.partyMeta) : {}),
     [data]
   )
+
+  const handleSelect = useCallback((id: SectionId) => {
+    setActiveSection(id)
+    setMenuOpen(false)
+    const url = new URL(window.location.href)
+    if (id === 'overview') {
+      url.searchParams.delete('section')
+    } else {
+      url.searchParams.set('section', id)
+    }
+    window.history.pushState(null, '', url.toString())
+  }, [])
 
   if (loading) {
     return (
@@ -113,6 +149,8 @@ function App() {
     {
       title: 'เปรียบเทียบ',
       items: [
+        ...(data.mpPlComparison ? [{ id: 'mpPl' as const, label: 'ส.ส.เขต vs บัญชีรายชื่อ', emoji: <Vote size={16} /> }] : []),
+        ...(data.ballotImbalance ? [{ id: 'ballotImbalance' as const, label: 'บัตรเขย่ง', emoji: <TriangleAlert size={16} /> }] : []),
         ...(data.voteSplitting ? [{ id: 'splitting' as const, label: 'Vote Splitting', emoji: <Scissors size={16} /> }] : []),
         ...(data.winningMargins ? [{ id: 'margin' as const, label: 'Winning Margin', emoji: <Flag size={16} /> }] : []),
         ...(data.spoiledComparison ? [{ id: 'spoiled' as const, label: 'บัตรไม่สมบูรณ์ 66 vs 69', emoji: <FileWarning size={16} /> }] : []),
@@ -139,11 +177,6 @@ function App() {
   ].filter(g => g.items.length > 0)
 
   const activeLabel = menuGroups.flatMap(g => g.items).find(i => i.id === activeSection)
-
-  const handleSelect = (id: SectionId) => {
-    setActiveSection(id)
-    setMenuOpen(false)
-  }
 
   return (
     <div className="app">
@@ -214,6 +247,8 @@ function App() {
 
           {activeSection === 'turnout' && data.turnoutAnomaly && <TurnoutAnomaly data={data.turnoutAnomaly} />}
           {activeSection === 'splitting' && data.voteSplitting && <VoteSplitting data={data.voteSplitting} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'mpPl' && data.mpPlComparison && <MpPlComparison data={data.mpPlComparison} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'ballotImbalance' && data.ballotImbalance && <BallotImbalance data={data.ballotImbalance} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
           {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
