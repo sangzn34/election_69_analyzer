@@ -277,6 +277,30 @@ export default function HomePage() {
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
         </main>
       </div>
+
+      {/* ── Footer Disclaimer ── */}
+      <footer style={{
+        marginTop: 32,
+        padding: '20px 16px',
+        borderTop: '1px solid var(--border)',
+        textAlign: 'center',
+        fontSize: 12,
+        lineHeight: 1.8,
+        color: 'var(--text-muted)',
+      }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <TriangleAlert size={14} style={{ color: '#eab308', flexShrink: 0 }} />
+            <strong style={{ color: 'var(--text-secondary)' }}>Disclaimer</strong>
+          </div>
+          <p>
+            โปรเจกต์นี้มีวัตถุประสงค์เพื่อ<strong style={{ color: 'var(--text-secondary)' }}>การวิเคราะห์เชิงสถิติและการศึกษาเท่านั้น</strong> ไม่ได้มีเจตนาชี้นำหรือตัดสินว่ามีการทุจริตในการเลือกตั้ง ข้อมูลที่แสดงเป็นผลการเลือกตั้ง<strong style={{ color: 'var(--text-secondary)' }}>ไม่เป็นทางการ</strong>จาก Thai PBS API — กรุณาตรวจสอบข้อมูลจากแหล่งทางการของ กกต. เสมอ
+          </p>
+          <p style={{ marginTop: 8 }}>
+            Fork จาก <a href="https://github.com/Pethon/election_69_analyzer" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Pethon/election_69_analyzer</a> · Source code บน <a href="https://github.com/sangzn34/election_69_analyzer" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>GitHub</a>
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }
