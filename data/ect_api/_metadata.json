@@ -1,0 +1,14 @@
+{
+  "fetched_at": "2026-02-12T14:55:50.453736",
+  "endpoints": {
+    "info_province": "https://static-ectreport69.ect.go.th/data/data/refs/info_province.json",
+    "info_constituency": "https://static-ectreport69.ect.go.th/data/data/refs/info_constituency.json",
+    "info_party_overview": "https://static-ectreport69.ect.go.th/data/data/refs/info_party_overview.json",
+    "info_mp_candidate": "https://static-ectreport69.ect.go.th/data/data/refs/info_mp_candidate.json",
+    "info_party_candidate": "https://static-ectreport69.ect.go.th/data/data/refs/info_party_candidate.json",
+    "stats_cons": "https://stats-ectreport69.ect.go.th/data/records/stats_cons.json",
+    "stats_party": "https://stats-ectreport69.ect.go.th/data/records/stats_party.json"
+  },
+  "success": 7,
+  "failed": 0
+}

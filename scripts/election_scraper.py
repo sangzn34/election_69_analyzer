@@ -5,7 +5,7 @@ import os
 
 # Configuration
 # Note: Change timestamp part (2026-02-09-19-03-03-086) to fetch updated data
-TIMESTAMP_VERSION = "2026-02-09-19-58-02-921"
+TIMESTAMP_VERSION = "2026-02-12-10-20-03-344"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

@@ -1,0 +1,13 @@
+{
+  "exported_at": "2026-02-12T15:39:34.411411",
+  "source": "กกต. ECT Report API (ectreport69.ect.go.th)",
+  "percent_counted": 94.3275,
+  "files": {
+    "candidate_results_full.csv": 3491,
+    "party_list_results.csv": 57,
+    "province_turnout.csv": 77,
+    "constituency_stats.csv": 401,
+    "party_constituency_wins.csv": 10,
+    "combined_seats_estimation.csv": 57
+  }
+}
