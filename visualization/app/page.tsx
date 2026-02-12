@@ -8,7 +8,7 @@ import {
   TrendingUp, Microscope, Zap, Hash, Search, ClipboardList,
   ArrowLeftRight, ArrowRightLeft, Medal, FlaskConical, TrendingDown, Scissors,
   Flag, Vote, TriangleAlert, FileWarning, XCircle, ChevronUp, ChevronDown, X, Menu,
-  Newspaper,
+  Newspaper, ScanBarcode,
 } from 'lucide-react'
 import SummaryCards from '../src/components/SummaryCards'
 import TopBenefitingParties from '../src/components/TopBenefitingParties'
@@ -32,6 +32,7 @@ import EnsembleAnalysis from '../src/components/EnsembleAnalysis'
 import SwitcherVoteComparison from '../src/components/SwitcherVoteComparison'
 import MpPlComparison from '../src/components/MpPlComparison'
 import BallotImbalance from '../src/components/BallotImbalance'
+import BallotBarcode from '../src/components/BallotBarcode'
 import ElectionNews from '../src/components/ElectionNews'
 import { ScrollArea } from '../src/components/ui/ScrollArea'
 import { buildPartyNameToCode } from '../src/utils/partyLogo'
@@ -44,7 +45,7 @@ type SectionId =
   | 'candidate' | 'switcher' | 'switcherDetail' | 'switcherVote' | 'retention' | 'party' | 'region'
   | 'province' | 'map' | 'explorer' | 'list'
   | 'turnout' | 'splitting' | 'margin' | 'spoiled'
-  | 'ensemble' | 'mpPl' | 'ballotImbalance' | 'news'
+  | 'ensemble' | 'mpPl' | 'ballotImbalance' | 'barcode' | 'news'
 
 interface MenuItem {
   id: SectionId
@@ -62,7 +63,7 @@ const ALL_SECTIONS: SectionId[] = [
   'candidate', 'switcher', 'switcherDetail', 'switcherVote', 'retention', 'party', 'region',
   'province', 'map', 'explorer', 'list',
   'turnout', 'splitting', 'margin', 'spoiled',
-  'ensemble', 'mpPl', 'ballotImbalance', 'news',
+  'ensemble', 'mpPl', 'ballotImbalance', 'barcode', 'news',
 ]
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/election_69_analyzer'
@@ -192,6 +193,7 @@ export default function HomePage() {
     {
       title: 'ข่าวสาร',
       items: [
+        { id: 'barcode' as SectionId, label: 'บาร์โค้ดบัตรเลือกตั้ง', emoji: <ScanBarcode size={16} /> },
         { id: 'news' as SectionId, label: 'ข่าวความผิดปกติ', emoji: <Newspaper size={16} /> },
       ],
     },
@@ -273,6 +275,7 @@ export default function HomePage() {
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
           {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
+          {activeSection === 'barcode' && <BallotBarcode />}
           {activeSection === 'news' && <ElectionNews />}
         </main>
       </div>
