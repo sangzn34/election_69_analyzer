@@ -189,18 +189,21 @@ export default function SwitcherVoteComparison({ data, nameToCodeMap }: Props) {
       {/* ── Charts ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 16, margin: '16px 0' }}>
         {/* Top gainers bar */}
-        <div className="chart-container" style={{ background: 'var(--card)', borderRadius: 12, padding: 16 }}>
+        <div className="chart-container" style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 16 }}>
           <h3 style={{ margin: '0 0 8px' }}>
             <TrendingUp size={16} style={{ verticalAlign: -2, color: '#22c55e' }} /> Top 10 เพิ่มขึ้นมากสุด
           </h3>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={barData.top10} layout="vertical" margin={{ left: 100, right: 20, top: 5, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis type="number" tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} stroke="var(--text-secondary)" />
-              <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: 'var(--text)' }} />
+            <BarChart data={barData.top10} layout="vertical" margin={{ left: 120, right: 20, top: 5, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
+              <XAxis type="number" tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} stroke="#9aa0a6" tick={{ fill: '#9aa0a6' }} />
+              <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11, fill: '#e8eaed' }} />
               <Tooltip
                 formatter={(v: number) => [`${v > 0 ? '+' : ''}${v.toFixed(2)}%`, 'เปลี่ยน']}
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8 }}
+                contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, color: '#e8eaed' }}
+                wrapperStyle={{ outline: 'none' }}
+                labelStyle={{ color: '#e8eaed', fontWeight: 600 }}
+                itemStyle={{ color: '#9aa0a6' }}
               />
               <Bar dataKey="pctDelta" radius={[0, 4, 4, 0]}>
                 {barData.top10.map((d, i) => (
@@ -212,18 +215,21 @@ export default function SwitcherVoteComparison({ data, nameToCodeMap }: Props) {
         </div>
 
         {/* Bottom losers bar */}
-        <div className="chart-container" style={{ background: 'var(--card)', borderRadius: 12, padding: 16 }}>
+        <div className="chart-container" style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 16 }}>
           <h3 style={{ margin: '0 0 8px' }}>
             <TrendingDown size={16} style={{ verticalAlign: -2, color: '#ef4444' }} /> Top 10 ลดลงมากสุด
           </h3>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={barData.bottom10} layout="vertical" margin={{ left: 100, right: 20, top: 5, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis type="number" tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} stroke="var(--text-secondary)" />
-              <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: 'var(--text)' }} />
+            <BarChart data={barData.bottom10} layout="vertical" margin={{ left: 120, right: 20, top: 5, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
+              <XAxis type="number" tickFormatter={v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`} stroke="#9aa0a6" tick={{ fill: '#9aa0a6' }} />
+              <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11, fill: '#e8eaed' }} />
               <Tooltip
                 formatter={(v: number) => [`${v > 0 ? '+' : ''}${v.toFixed(2)}%`, 'เปลี่ยน']}
-                contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8 }}
+                contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, color: '#e8eaed' }}
+                wrapperStyle={{ outline: 'none' }}
+                labelStyle={{ color: '#e8eaed', fontWeight: 600 }}
+                itemStyle={{ color: '#9aa0a6' }}
               />
               <Bar dataKey="pctDelta" radius={[4, 0, 0, 4]}>
                 {barData.bottom10.map((d, i) => (
@@ -236,33 +242,33 @@ export default function SwitcherVoteComparison({ data, nameToCodeMap }: Props) {
       </div>
 
       {/* ── Scatter: pct66 vs pct69 ── */}
-      <div className="chart-container" style={{ background: 'var(--card)', borderRadius: 12, padding: 16, margin: '16px 0' }}>
+      <div className="chart-container" style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 16, margin: '16px 0' }}>
         <h3 style={{ margin: '0 0 8px' }}>คะแนน 66 vs 69 (%) — จุดเหนือเส้นทแยง = ได้เสียงเพิ่ม</h3>
         <ResponsiveContainer width="100%" height={360}>
           <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
             <XAxis dataKey="pct66" type="number" name="% คะแนน 66" domain={[0, 100]}
-              label={{ value: '% คะแนน 66', position: 'bottom', fill: 'var(--text-secondary)', fontSize: 12 }}
-              stroke="var(--text-secondary)" />
+              label={{ value: '% คะแนน 66', position: 'bottom', fill: '#9aa0a6', fontSize: 12 }}
+              stroke="#9aa0a6" tick={{ fill: '#9aa0a6' }} />
             <YAxis dataKey="pct69" type="number" name="% คะแนน 69" domain={[0, 100]}
-              label={{ value: '% คะแนน 69', angle: -90, position: 'insideLeft', fill: 'var(--text-secondary)', fontSize: 12 }}
-              stroke="var(--text-secondary)" />
+              label={{ value: '% คะแนน 69', angle: -90, position: 'insideLeft', fill: '#9aa0a6', fontSize: 12 }}
+              stroke="#9aa0a6" tick={{ fill: '#9aa0a6' }} />
             <ZAxis range={[30, 30]} />
             <Tooltip
               content={({ payload }) => {
                 if (!payload?.length) return null
                 const d = payload[0].payload
                 return (
-                  <div style={{ background: 'var(--card)', padding: 8, border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}>
-                    <div style={{ fontWeight: 700 }}>{d.name}</div>
-                    <div>พรรค 69: {d.party69}</div>
-                    <div>66: {d.pct66.toFixed(1)}% → 69: {d.pct69.toFixed(1)}%</div>
-                    <div>{d.switched ? '🔄 ย้ายพรรค' : 'พรรคเดิม'}</div>
+                  <div style={{ background: '#1e2130', padding: 8, border: '1px solid #2d3148', borderRadius: 8, fontSize: 12, color: '#e8eaed' }}>
+                    <div style={{ fontWeight: 700, color: '#e8eaed' }}>{d.name}</div>
+                    <div style={{ color: '#9aa0a6' }}>พรรค 69: {d.party69}</div>
+                    <div style={{ color: '#9aa0a6' }}>66: {d.pct66.toFixed(1)}% → 69: {d.pct69.toFixed(1)}%</div>
+                    <div style={{ color: '#9aa0a6' }}>{d.switched ? '🔄 ย้ายพรรค' : 'พรรคเดิม'}</div>
                   </div>
                 )
               }}
             />
-            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="var(--text-secondary)" strokeDasharray="5 5" strokeOpacity={0.6} />
+            <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 100, y: 100 }]} stroke="#9aa0a6" strokeDasharray="5 5" strokeOpacity={0.6} />
             <Scatter data={scatterData}>
               {scatterData.map((d, i) => (
                 <Cell key={i} fill={d.color} fillOpacity={d.switched ? 0.9 : 0.5} />
@@ -270,7 +276,7 @@ export default function SwitcherVoteComparison({ data, nameToCodeMap }: Props) {
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
-        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+        <div style={{ textAlign: 'center', fontSize: 11, color: '#9aa0a6', marginTop: 4 }}>
           จุดที่เข้มกว่า = ผู้สมัครที่ย้ายพรรค · จุดเหนือเส้นทแยงมุม = คะแนนเพิ่มขึ้น
         </div>
       </div>

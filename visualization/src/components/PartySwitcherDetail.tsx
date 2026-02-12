@@ -83,8 +83,8 @@ export default function PartySwitcherDetail({ winnerRetention, areaDetails, name
         if (area) {
           const winnerCand = area.combined.find(c => c.num === area.winnerNum)
           if (winnerCand?.mp) {
-            votes = winnerCand.mp.voteTotal
-            votePercent = winnerCand.mp.votePercent
+            votes = winnerCand.mp.voteTotal ?? 0
+            votePercent = winnerCand.mp.votePercent ?? 0
           }
           // cache color
           if (w.partyName && w.partyColor) PARTY_COLORS[w.partyName] = w.partyColor

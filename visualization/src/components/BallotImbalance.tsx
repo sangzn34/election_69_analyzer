@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, ReferenceLine, ScatterChart, Scatter, ZAxis,
@@ -6,6 +6,7 @@ import {
 import {
   AlertTriangle, Info, Search, X, ChevronDown,
   ArrowUpRight, ArrowDownRight, Minus, Scale, Filter,
+  Share2, Link2, Check,
 } from 'lucide-react'
 import type { BallotImbalance as BallotImbalanceData, BallotImbalanceAreaItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
@@ -31,6 +32,43 @@ function directionLabel(d: string) {
 /* ─── Tab ─── */
 type TabMode = 'overview' | 'areas' | 'province'
 
+/* ─── URL helpers ─── */
+function getParamFromURL(key: string): string | null {
+  return new URLSearchParams(window.location.search).get(key)
+}
+
+function buildShareURL(params: Record<string, string>): string {
+  const url = new URL(window.location.href)
+  url.searchParams.set('section', 'ballotImbalance')
+  for (const [k, v] of Object.entries(params)) {
+    if (v && v !== 'all' && v !== 'false' && v !== 'overview') {
+      url.searchParams.set(k, v)
+    } else {
+      url.searchParams.delete(k)
+    }
+  }
+  return url.toString()
+}
+
+function syncURL(params: Record<string, string>) {
+  const url = buildShareURL(params)
+  window.history.replaceState(null, '', url)
+}
+
+/* ─── Copy-to-clipboard with toast ─── */
+function useCopyToast() {
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const copy = useCallback((text: string, id = '__global__') => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id)
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = setTimeout(() => setCopiedId(null), 2000)
+    })
+  }, [])
+  return { copiedId, copy }
+}
+
 /* ─── Props ─── */
 interface Props {
   data: BallotImbalanceData
@@ -38,13 +76,56 @@ interface Props {
 }
 
 export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
-  const [tab, setTab] = useState<TabMode>('overview')
-  const [search, setSearch] = useState('')
+  /* ── Read initial state from URL query params ── */
+  const initTab = (getParamFromURL('biTab') as TabMode) || 'overview'
+  const initSearch = getParamFromURL('biSearch') || ''
+  const initOutlier = getParamFromURL('biOutlier') === '1'
+  const initDir = (getParamFromURL('biDir') as 'all' | 'mp' | 'pl') || 'all'
+  const initArea = getParamFromURL('biArea') || ''
+
+  const [tab, setTab] = useState<TabMode>(initArea ? 'areas' : initTab)
+  const [search, setSearch] = useState(initArea || initSearch)
   const [showCount, setShowCount] = useState(30)
-  const [filterOutlier, setFilterOutlier] = useState(false)
-  const [filterDirection, setFilterDirection] = useState<'all' | 'mp' | 'pl'>('all')
+  const [filterOutlier, setFilterOutlier] = useState(initOutlier)
+  const [filterDirection, setFilterDirection] = useState<'all' | 'mp' | 'pl'>(initDir)
+  const [highlightArea, setHighlightArea] = useState<string>(initArea)
+
+  const highlightRef = useRef<HTMLTableRowElement | null>(null)
+  const { copiedId, copy } = useCopyToast()
 
   const { perArea, histogram, byProvince, meta } = data
+
+  /* ── Sync state → URL (replaceState so no extra history entries) ── */
+  useEffect(() => {
+    syncURL({
+      biTab: tab,
+      biSearch: highlightArea ? '' : search,   // don't store search if from biArea
+      biOutlier: filterOutlier ? '1' : 'false',
+      biDir: filterDirection,
+      biArea: highlightArea,
+    })
+  }, [tab, search, filterOutlier, filterDirection, highlightArea])
+
+  /* ── Scroll to highlighted area row ── */
+  useEffect(() => {
+    if (highlightArea && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [highlightArea, tab])
+
+  /* ── Build share URL for current view ── */
+  const currentShareURL = useMemo(() => buildShareURL({
+    biTab: tab,
+    biSearch: search,
+    biOutlier: filterOutlier ? '1' : 'false',
+    biDir: filterDirection,
+  }), [tab, search, filterOutlier, filterDirection])
+
+  /* ── Build share URL for a single area ── */
+  const areaShareURL = useCallback((areaCode: string) => buildShareURL({
+    biTab: 'areas',
+    biArea: areaCode,
+  }), [])
 
   /* ── Scatter data: MP total vs PL total ── */
   const scatterData = useMemo(() =>
@@ -99,10 +180,29 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
 
   return (
     <div className="section">
-      <div className="section-title"><Scale size={20} /> บัตรเขย่ง — เปรียบเทียบจำนวนบัตรเลือก ส.ส. กับ บัญชีรายชื่อ</div>
-      <div className="section-desc">
-        เปรียบเทียบ<strong>จำนวนคะแนนรวม</strong>ของบัตรเลือก ส.ส. เขต กับ บัตรบัญชีรายชื่อ ในแต่ละเขตเลือกตั้ง —
-        ถ้าผู้มีสิทธิ์ทุกคนกรอกบัตรทั้ง 2 ใบ จำนวนคะแนนรวมทั้งสองระบบ<strong>ควรใกล้เคียงกัน</strong>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1 }}>
+          <div className="section-title"><Scale size={20} /> บัตรเขย่ง — เปรียบเทียบจำนวนบัตรเลือก ส.ส. กับ บัญชีรายชื่อ</div>
+          <div className="section-desc">
+            เปรียบเทียบ<strong>จำนวนคะแนนรวม</strong>ของบัตรเลือก ส.ส. เขต กับ บัตรบัญชีรายชื่อ ในแต่ละเขตเลือกตั้ง —
+            ถ้าผู้มีสิทธิ์ทุกคนกรอกบัตรทั้ง 2 ใบ จำนวนคะแนนรวมทั้งสองระบบ<strong>ควรใกล้เคียงกัน</strong>
+          </div>
+        </div>
+        <button
+          onClick={() => copy(currentShareURL)}
+          title="คัดลอกลิงก์แชร์"
+          style={{
+            flexShrink: 0, padding: '8px 14px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
+            background: copiedId === '__global__' ? '#22c55e22' : 'var(--bg-secondary)',
+            border: copiedId === '__global__' ? '1px solid #22c55e' : '1px solid var(--border)',
+            color: copiedId === '__global__' ? '#22c55e' : 'var(--accent)',
+            display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+            transition: 'all 0.2s',
+          }}
+        >
+          {copiedId === '__global__' ? <Check size={14} /> : <Share2 size={14} />}
+          {copiedId === '__global__' ? 'คัดลอกแล้ว!' : 'แชร์หน้านี้'}
+        </button>
       </div>
 
       {/* ── Tabs ── */}
@@ -407,11 +507,25 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
                   <th style={{ textAlign: 'center' }}>z</th>
                   <th>ชนะ</th>
                   <th style={{ width: 100 }}>เทียบ</th>
+                  <th style={{ width: 40 }}></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredAreas.slice(0, showCount).map(a => (
-                  <tr key={a.areaCode} style={{ background: a.isOutlier ? 'rgba(239,68,68,0.06)' : undefined }}>
+                {filteredAreas.slice(0, showCount).map(a => {
+                  const isHighlighted = highlightArea === a.areaCode
+                  return (
+                  <tr
+                    key={a.areaCode}
+                    ref={isHighlighted ? highlightRef : undefined}
+                    style={{
+                      background: isHighlighted
+                        ? 'rgba(96,165,250,0.15)'
+                        : a.isOutlier ? 'rgba(239,68,68,0.06)' : undefined,
+                      outline: isHighlighted ? '2px solid #60a5fa' : undefined,
+                      borderRadius: isHighlighted ? 8 : undefined,
+                      transition: 'background 0.3s, outline 0.3s',
+                    }}
+                  >
                     <td>
                       <div style={{ fontWeight: a.isOutlier ? 700 : 400, fontSize: 13 }}>
                         {a.isOutlier && <AlertTriangle size={12} style={{ color: '#ef4444', verticalAlign: -1, marginRight: 4 }} />}
@@ -467,8 +581,24 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
                         })()}
                       </div>
                     </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        onClick={() => copy(areaShareURL(a.areaCode), a.areaCode)}
+                        title={`แชร์ข้อมูล ${a.areaName}`}
+                        style={{
+                          padding: '3px 6px', borderRadius: 6, cursor: 'pointer',
+                          background: copiedId === a.areaCode ? '#22c55e22' : 'transparent',
+                          border: copiedId === a.areaCode ? '1px solid #22c55e' : '1px solid transparent',
+                          color: copiedId === a.areaCode ? '#22c55e' : 'var(--text-secondary)',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {copiedId === a.areaCode ? <Check size={12} /> : <Link2 size={12} />}
+                      </button>
+                    </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

@@ -5,6 +5,7 @@ import {
   TrendingUp, Microscope, Zap, Hash, Search, ClipboardList,
   ArrowLeftRight, ArrowRightLeft, Medal, FlaskConical, TrendingDown, Scissors,
   Flag, Vote, TriangleAlert, FileWarning, XCircle, ChevronUp, ChevronDown, X, Menu,
+  Newspaper,
 } from 'lucide-react'
 import SummaryCards from './components/SummaryCards'
 import TopBenefitingParties from './components/TopBenefitingParties'
@@ -29,6 +30,7 @@ import ProvinceMap from './components/ProvinceMap'
 import SwitcherVoteComparison from './components/SwitcherVoteComparison'
 import MpPlComparison from './components/MpPlComparison'
 import BallotImbalance from './components/BallotImbalance'
+import ElectionNews from './components/ElectionNews'
 import { ScrollArea } from './components/ui/ScrollArea'
 import { buildPartyNameToCode } from './utils/partyLogo'
 
@@ -37,7 +39,7 @@ type SectionId =
   | 'candidate' | 'switcher' | 'switcherDetail' | 'switcherVote' | 'retention' | 'party' | 'region'
   | 'province' | 'map' | 'explorer' | 'list'
   | 'turnout' | 'splitting' | 'margin' | 'spoiled'
-  | 'ensemble' | 'mpPl' | 'ballotImbalance'
+  | 'ensemble' | 'mpPl' | 'ballotImbalance' | 'news'
 
 interface MenuItem {
   id: SectionId
@@ -55,7 +57,7 @@ const ALL_SECTIONS: SectionId[] = [
   'candidate', 'switcher', 'switcherDetail', 'switcherVote', 'retention', 'party', 'region',
   'province', 'map', 'explorer', 'list',
   'turnout', 'splitting', 'margin', 'spoiled',
-  'ensemble', 'mpPl', 'ballotImbalance',
+  'ensemble', 'mpPl', 'ballotImbalance', 'news',
 ]
 
 function getSectionFromURL(): SectionId {
@@ -174,6 +176,12 @@ function App() {
         { id: 'list' as SectionId, label: 'รายชื่อเขต', emoji: <ClipboardList size={16} /> },
       ],
     },
+    {
+      title: 'ข่าวสาร',
+      items: [
+        { id: 'news' as SectionId, label: 'ข่าวความผิดปกติ', emoji: <Newspaper size={16} /> },
+      ],
+    },
   ].filter(g => g.items.length > 0)
 
   const activeLabel = menuGroups.flatMap(g => g.items).find(i => i.id === activeSection)
@@ -252,6 +260,7 @@ function App() {
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
           {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
+          {activeSection === 'news' && <ElectionNews />}
         </main>
       </div>
     </div>
