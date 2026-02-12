@@ -3,7 +3,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, ReferenceLine, Legend,
 } from 'recharts'
-import { AlertTriangle, BarChart3, Table2, Info, GitCompareArrows, Microscope, MapPin, Users } from 'lucide-react'
+import { AlertTriangle, BarChart3, Table2, Info, GitCompareArrows, Microscope, MapPin, Users, ChevronUp, ChevronDown, Vote, ClipboardList, Trophy, CircleDot } from 'lucide-react'
 import PartyLogo from './PartyLogo'
 import type { SpoiledComparisonItem, SpoiledComparisonMeta, ElectionComparison, NameToCodeMap } from '../types'
 
@@ -20,14 +20,14 @@ const ScatterTooltip = ({ active, payload }: ScatterTooltipProps) => {
   return (
     <div className="custom-tooltip">
       <div className="label">{d.areaName} ({d.province})</div>
-      <div className="item">🗳️ บัตรไม่สมบูรณ์ (เลือกตั้ง สส.): {d.mpNonValidPercent.toFixed(2)}% ({d.mpNonValidVotes.toLocaleString()} ใบ)</div>
-      <div className="item">📋 บัตรไม่สมบูรณ์ (ประชามติ): {d.refNonValidPercent.toFixed(2)}% ({(d.refBadVotes + d.refNoVotes).toLocaleString()} ใบ)</div>
+      <div className="item"><Vote size={12} style={{ verticalAlign: -2 }} /> บัตรไม่สมบูรณ์ (เลือกตั้ง สส.): {d.mpNonValidPercent.toFixed(2)}% ({d.mpNonValidVotes.toLocaleString()} ใบ)</div>
+      <div className="item"><ClipboardList size={12} style={{ verticalAlign: -2 }} /> บัตรไม่สมบูรณ์ (ประชามติ): {d.refNonValidPercent.toFixed(2)}% ({(d.refBadVotes + d.refNoVotes).toLocaleString()} ใบ)</div>
       <div className="item" style={{ color: d.delta > 0 ? '#f44853' : '#42b8ff', fontWeight: 700 }}>
-        Δ = {d.delta > 0 ? '+' : ''}{d.delta.toFixed(2)}% {d.isOutlier ? '⚠️ Outlier' : ''}
+        Δ = {d.delta > 0 ? '+' : ''}{d.delta.toFixed(2)}% {d.isOutlier ? <><AlertTriangle size={12} style={{ verticalAlign: -2 }} /> Outlier</> : ''}
       </div>
-      <div className="item">📊 Turnout: {d.turnoutPercent}% | บัตรทั้งหมด: {d.totalBallots.toLocaleString()}</div>
+      <div className="item"><BarChart3 size={12} style={{ verticalAlign: -2 }} /> Turnout: {d.turnoutPercent}% | บัตรทั้งหมด: {d.totalBallots.toLocaleString()}</div>
       <div className="item" style={{ color: d.winnerPartyColor, fontWeight: 700 }}>
-        🏆 ชนะ: {d.winnerParty}
+        <Trophy size={12} style={{ verticalAlign: -2 }} /> ชนะ: {d.winnerParty}
       </div>
     </div>
   )
@@ -70,11 +70,11 @@ function NationalComparison({ data }: { data: ElectionComparison }) {
 
   const DeltaBadge = ({ value, suffix = '%' }: { value: number; suffix?: string }) => (
     <span style={{
-      display: 'inline-block', padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+      display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 700,
       background: value > 0 ? '#f4485320' : value < 0 ? '#22c55e20' : '#ffffff10',
       color: value > 0 ? '#f44853' : value < 0 ? '#22c55e' : '#999',
     }}>
-      {value > 0 ? '▲' : value < 0 ? '▼' : '–'} {Math.abs(value)}{suffix}
+      {value > 0 ? <ChevronUp size={12} /> : value < 0 ? <ChevronDown size={12} /> : '–'} {Math.abs(value)}{suffix}
     </span>
   )
 
@@ -417,7 +417,7 @@ export default function SpoiledComparison({ data, meta, nameToCodeMap, compariso
           </div>
           <div style={{ fontSize: 11, color: '#999', marginBottom: 12, lineHeight: 1.5 }}>
             แต่ละจุด = 1 เขตเลือกตั้ง — จุดที่อยู่<strong style={{ color: '#e8eaed' }}>เหนือเส้นทแยง</strong>คือเขตที่ใบ สส. มีบัตรไม่สมบูรณ์มากกว่าประชามติ
-            <br />🔴 จุดสีแดง = Outlier (Δ เกินเกณฑ์) | จุดอื่นสีตามพรรคผู้ชนะ | Hover เพื่อดูรายละเอียด
+            <br />จุดสีแดง = Outlier (Δ เกินเกณฑ์) | จุดอื่นสีตามพรรคผู้ชนะ | Hover เพื่อดูรายละเอียด
           </div>
           <ResponsiveContainer width="100%" height={450}>
             <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
@@ -514,7 +514,7 @@ export default function SpoiledComparison({ data, meta, nameToCodeMap, compariso
                     color: d.delta > 0 ? '#f44853' : '#22c55e',
                   }}>
                     {d.delta > 0 ? '+' : ''}{d.delta.toFixed(2)}%
-                    {d.isOutlier && ' ⚠️'}
+                    {d.isOutlier && <> <AlertTriangle size={12} style={{ verticalAlign: -2 }} /></>}
                   </td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -690,7 +690,7 @@ export default function SpoiledComparison({ data, meta, nameToCodeMap, compariso
                   </span>
                   {p.outliers > 0 && (
                     <span style={{ marginLeft: 8, color: '#ffa502', fontSize: 11 }}>
-                      ⚠️ {p.outliers} Outlier
+                      <AlertTriangle size={12} style={{ verticalAlign: -2 }} /> {p.outliers} Outlier
                     </span>
                   )}
                 </div>

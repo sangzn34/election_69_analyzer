@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { Hash } from 'lucide-react'
 import type { CandidateNumberItem } from '../types'
 
 interface CustomTooltipProps {
@@ -68,7 +69,7 @@ export default function CandidateNumbers({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🔢</span>
+        <Hash size={20} />
         ความถี่ของหมายเลขผู้สมัคร ส.ส. เขต
       </div>
       <div className="section-desc">

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { ClipboardList } from 'lucide-react'
 import type { VoteBuyingItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -35,13 +36,13 @@ export default function SuspiciousAreaList({ data, nameToCodeMap }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">📋</span>
+        <ClipboardList size={20} />
         รายชื่อเขตที่น่าสงสัย ({filtered.length} เขต)
       </div>
       <div className="section-desc">รายชื่อเขตที่ ส.ส. ผู้ชนะมีเบอร์ตรงกับพรรคบัญชีรายชื่อที่ติด TOP 7 (และไม่ใช่พรรคต้นสังกัด)</div>
 
       <div className="filter-bar">
-        <input type="text" className="search-input" placeholder="🔍 ค้นหาเขตหรือจังหวัด..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input type="text" className="search-input" placeholder="ค้นหาเขตหรือจังหวัด..." value={search} onChange={e => setSearch(e.target.value)} />
         <div className="tabs" style={{ marginBottom: 0 }}>
           <button className={`tab ${filterParty === 'all' ? 'active' : ''}`} onClick={() => setFilterParty('all')}>ทั้งหมด</button>
           {winnerParties.map(wp => (

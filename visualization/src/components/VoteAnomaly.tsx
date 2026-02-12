@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { Zap } from 'lucide-react'
 import type { VoteAnomalyItem } from '../types'
 
 interface CustomTooltipProps {
@@ -22,7 +23,7 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
       <div className="item">อันดับ PL: {d.targetPlRank}</div>
       <div className="item">มัธยฐานพรรคเล็ก: {d.medianSmallPartyVotes?.toLocaleString()} คะแนน</div>
       <div className="item" style={{ color: '#ff8a4d', fontWeight: 700 }}>
-        ⚡ ผิดปกติ {d.anomalyRatio}x (มากกว่ามัธยฐาน {d.anomalyRatio} เท่า)
+        ผิดปกติ {d.anomalyRatio}x (มากกว่ามัธยฐาน {d.anomalyRatio} เท่า)
       </div>
     </div>
   )
@@ -53,7 +54,7 @@ export default function VoteAnomaly({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">⚡</span>
+        <Zap size={20} />
         Anomaly Score: เขตที่คะแนนพรรคส้มหล่นสูงผิดปกติ
       </div>
       <div className="section-desc">

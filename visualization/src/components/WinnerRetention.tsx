@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { BarChart3, CornerDownRight, HeartCrack } from 'lucide-react'
+import { BarChart3, CornerDownRight, HeartCrack, Medal, Home, UserPlus } from 'lucide-react'
 import type { RetentionSummaryItem, WinnerRetentionItem, Lost66WinnerItem, Summary, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -51,9 +51,9 @@ export default function WinnerRetention({ retentionSummary, winnerRetention, los
     return (
       <div className="custom-tooltip">
         <div className="label">{label}</div>
-        <div className="item">🏠 อยู่พรรคเดิม: {d?.['อยู่พรรคเดิม']} คน</div>
-        <div className="item">↪ ย้ายพรรคมา: {d?.['ย้ายพรรคมา']} คน</div>
-        <div className="item">🆕 หน้าใหม่: {d?.['หน้าใหม่']} คน</div>
+        <div className="item"><Home size={12} style={{ verticalAlign: -2 }} /> อยู่พรรคเดิม: {d?.['อยู่พรรคเดิม']} คน</div>
+        <div className="item"><CornerDownRight size={12} style={{ verticalAlign: -2 }} /> ย้ายพรรคมา: {d?.['ย้ายพรรคมา']} คน</div>
+        <div className="item"><UserPlus size={12} style={{ verticalAlign: -2 }} /> หน้าใหม่: {d?.['หน้าใหม่']} คน</div>
         <div className="item" style={{ marginTop: 4, fontWeight: 600 }}>รวม: {d?.total} ที่นั่ง</div>
       </div>
     )
@@ -62,7 +62,7 @@ export default function WinnerRetention({ retentionSummary, winnerRetention, los
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🏅</span>
+        <Medal size={20} />
         ส.ส. ปี 66: ใครรักษาที่นั่งได้ ใครแพ้ ใครย้ายพรรค?
       </div>
       <div className="section-desc">
@@ -72,9 +72,9 @@ export default function WinnerRetention({ retentionSummary, winnerRetention, los
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="stat-card"><div className="stat-value" style={{ color: '#ff8a4d' }}>{stats.totalWinners}</div><div className="stat-label">ผู้ชนะทั้งหมด</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#5ed88a' }}>{stats.retained}</div><div className="stat-label">🏠 อยู่พรรคเดิม</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#f44853' }}>{stats.switched}</div><div className="stat-label">↪ ย้ายพรรค+ชนะ</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#42b8ff' }}>{stats.newFace}</div><div className="stat-label">🆕 หน้าใหม่ชนะ</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#5ed88a' }}>{stats.retained}</div><div className="stat-label"><Home size={12} style={{ verticalAlign: -2 }} /> อยู่พรรคเดิม</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#f44853' }}>{stats.switched}</div><div className="stat-label"><CornerDownRight size={12} style={{ verticalAlign: -2 }} /> ย้ายพรรค+ชนะ</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#42b8ff' }}>{stats.newFace}</div><div className="stat-label"><UserPlus size={12} style={{ verticalAlign: -2 }} /> หน้าใหม่ชนะ</div></div>
       </div>
 
       <div className="filter-bar">
@@ -143,7 +143,7 @@ export default function WinnerRetention({ retentionSummary, winnerRetention, los
                     </td>
                     <td style={{ color: w.rank === 2 ? '#e0c232' : w.rank <= 5 ? '#9aa0a6' : '#666', fontWeight: 700 }}>#{w.rank}</td>
                     <td>{w.voteTotal?.toLocaleString()}</td>
-                    <td>{w.switchedParty === true ? <span style={{ color: '#f44853' }}>↪ ย้าย</span> : <span style={{ color: '#5ed88a' }}>อยู่เดิม</span>}</td>
+                    <td>{w.switchedParty === true ? <span style={{ color: '#f44853' }}><CornerDownRight size={12} style={{ verticalAlign: -2 }} /> ย้าย</span> : <span style={{ color: '#5ed88a' }}>อยู่เดิม</span>}</td>
                     <td style={{ color: '#9aa0a6' }}>{w.party66Ref || '-'}</td>
                   </tr>
                 ))}

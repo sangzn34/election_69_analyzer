@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { ElectionData, NameToCodeMap } from './types'
 import {
-  BarChart3, Target, PieChart, Globe, MapPin,
+  BarChart3, Target, PieChart, Globe, MapPin, Map,
   TrendingUp, Microscope, Zap, Hash, Search, ClipboardList,
-  ArrowLeftRight, Medal, FlaskConical, TrendingDown, Scissors,
-  Flag, Vote, TriangleAlert, FileWarning,
+  ArrowLeftRight, ArrowRightLeft, Medal, FlaskConical, TrendingDown, Scissors,
+  Flag, Vote, TriangleAlert, FileWarning, XCircle, ChevronUp, ChevronDown, X, Menu,
 } from 'lucide-react'
 import SummaryCards from './components/SummaryCards'
 import TopBenefitingParties from './components/TopBenefitingParties'
@@ -18,21 +18,23 @@ import RegionBreakdown from './components/RegionBreakdown'
 import VoteAnomaly from './components/VoteAnomaly'
 import AreaExplorer from './components/AreaExplorer'
 import PartySwitcher from './components/PartySwitcher'
+import PartySwitcherDetail from './components/PartySwitcherDetail'
 import WinnerRetention from './components/WinnerRetention'
 import TurnoutAnomaly from './components/TurnoutAnomaly'
 import VoteSplitting from './components/VoteSplitting'
 import WinningMargin from './components/WinningMargin'
-import ReferendumCorrelation from './components/ReferendumCorrelation'
 import SpoiledComparison from './components/SpoiledComparison'
 import EnsembleAnalysis from './components/EnsembleAnalysis'
+import ProvinceMap from './components/ProvinceMap'
+import SwitcherVoteComparison from './components/SwitcherVoteComparison'
 import { ScrollArea } from './components/ui/ScrollArea'
 import { buildPartyNameToCode } from './utils/partyLogo'
 
 type SectionId =
   | 'overview' | 'benefiting' | 'rank' | 'scatter' | 'anomaly'
-  | 'candidate' | 'switcher' | 'retention' | 'party' | 'region'
-  | 'province' | 'explorer' | 'list'
-  | 'turnout' | 'splitting' | 'margin' | 'referendum' | 'spoiled'
+  | 'candidate' | 'switcher' | 'switcherDetail' | 'switcherVote' | 'retention' | 'party' | 'region'
+  | 'province' | 'map' | 'explorer' | 'list'
+  | 'turnout' | 'splitting' | 'margin' | 'spoiled'
   | 'ensemble'
 
 interface MenuItem {
@@ -82,7 +84,7 @@ function App() {
   if (!data) {
     return (
       <div className="loading">
-        ❌ ไม่สามารถโหลดข้อมูลได้ กรุณารัน <code>python3 scripts/prepare_data.py</code> ก่อน
+        <XCircle size={18} style={{ verticalAlign: -3, marginRight: 4 }} /> ไม่สามารถโหลดข้อมูลได้ กรุณารัน <code>python3 scripts/prepare_data.py</code> ก่อน
       </div>
     )
   }
@@ -96,6 +98,7 @@ function App() {
         { id: 'party' as SectionId, label: 'แยกตามพรรค', emoji: <PieChart size={16} /> },
         { id: 'region' as SectionId, label: 'แยกตามภูมิภาค', emoji: <Globe size={16} /> },
         { id: 'province' as SectionId, label: 'แยกตามจังหวัด', emoji: <MapPin size={16} /> },
+        ...(data.provinceMapData ? [{ id: 'map' as const, label: 'แผนที่เลือกตั้ง', emoji: <Map size={16} /> }] : []),
       ],
     },
     {
@@ -112,7 +115,6 @@ function App() {
       items: [
         ...(data.voteSplitting ? [{ id: 'splitting' as const, label: 'Vote Splitting', emoji: <Scissors size={16} /> }] : []),
         ...(data.winningMargins ? [{ id: 'margin' as const, label: 'Winning Margin', emoji: <Flag size={16} /> }] : []),
-        ...(data.referendumCorrelation ? [{ id: 'referendum' as const, label: 'ประชามติ vs เลือกตั้ง', emoji: <Vote size={16} /> }] : []),
         ...(data.spoiledComparison ? [{ id: 'spoiled' as const, label: 'บัตรไม่สมบูรณ์ 66 vs 69', emoji: <FileWarning size={16} /> }] : []),
       ],
     },
@@ -121,6 +123,8 @@ function App() {
       items: [
         { id: 'candidate' as SectionId, label: 'เบอร์ผู้สมัคร', emoji: <Hash size={16} /> },
         { id: 'switcher' as SectionId, label: 'ย้ายพรรค', emoji: <ArrowLeftRight size={16} /> },
+        { id: 'switcherDetail' as SectionId, label: 'ส.ส. ย้ายพรรค (รายคน)', emoji: <ArrowRightLeft size={16} /> },
+        ...(data.switcherVoteComparison ? [{ id: 'switcherVote' as const, label: 'คะแนน 66 vs 69', emoji: <TrendingUp size={16} /> }] : []),
         { id: 'retention' as SectionId, label: 'ส.ส.66 รักษาที่นั่ง', emoji: <Medal size={16} /> },
         { id: 'rank' as SectionId, label: 'การกระจายอันดับ', emoji: <TrendingUp size={16} /> },
       ],
@@ -155,9 +159,9 @@ function App() {
 
       {/* Mobile menu toggle */}
       <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)}>
-        <span className="menu-toggle-icon">{menuOpen ? '✕' : '☰'}</span>
+        <span className="menu-toggle-icon">{menuOpen ? <X size={16} /> : <Menu size={16} />}</span>
         <span>{activeLabel ? <>{activeLabel.emoji} {activeLabel.label}</> : 'เมนู'}</span>
-        <span className="menu-toggle-arrow">{menuOpen ? '▲' : '▼'}</span>
+        <span className="menu-toggle-arrow">{menuOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
       </button>
 
       <div className="layout">
@@ -198,17 +202,19 @@ function App() {
           {activeSection === 'anomaly' && <VoteAnomaly data={data.voteAnomaly} />}
           {activeSection === 'candidate' && <CandidateNumbers data={data.candidateNumbers} />}
           {activeSection === 'switcher' && <PartySwitcher flows={data.partySwitcherFlows} summary={data.partySwitcherSummary} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'switcherDetail' && <PartySwitcherDetail winnerRetention={data.winnerRetention} areaDetails={data.areaDetails} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'switcherVote' && data.switcherVoteComparison && <SwitcherVoteComparison data={data.switcherVoteComparison} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'retention' && <WinnerRetention retentionSummary={data.retentionSummary} winnerRetention={data.winnerRetention} lost66Winners={data.lost66Winners} summary={data.summary} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'party' && <SuspiciousByParty data={data.suspiciousByParty} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'region' && <RegionBreakdown data={data.regionSummary} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'province' && <ProvinceBreakdown data={data.provinceSummary} />}
+          {activeSection === 'map' && data.provinceMapData && <ProvinceMap data={data.provinceMapData} />}
           {activeSection === 'explorer' && <AreaExplorer data={data.areaDetails} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'list' && <SuspiciousAreaList data={data.voteBuyingAnalysis} nameToCodeMap={nameToCodeMap} />}
 
           {activeSection === 'turnout' && data.turnoutAnomaly && <TurnoutAnomaly data={data.turnoutAnomaly} />}
           {activeSection === 'splitting' && data.voteSplitting && <VoteSplitting data={data.voteSplitting} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
-          {activeSection === 'referendum' && data.referendumCorrelation && <ReferendumCorrelation data={data.referendumCorrelation} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
         </main>

@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   ScatterChart, Scatter, ZAxis,
 } from 'recharts'
-import { BarChart3, Microscope } from 'lucide-react'
+import { BarChart3, Microscope, TrendingDown, CircleDot } from 'lucide-react'
 import type { TurnoutAnomalyItem } from '../types'
 
 interface TooltipProps {
@@ -51,7 +51,7 @@ export default function TurnoutAnomaly({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">📉</span>
+        <TrendingDown size={20} />
         Turnout Anomaly: เขตที่ % ผู้มาใช้สิทธิผิดปกติ
       </div>
       <div className="section-desc">
@@ -76,7 +76,7 @@ export default function TurnoutAnomaly({ data }: Props) {
       {viewMode === 'chart' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 16 }}>
           <div>
-            <h4 style={{ color: '#f44853', textAlign: 'center', marginBottom: 8 }}>🔴 Turnout สูงสุด</h4>
+            <h4 style={{ color: '#f44853', textAlign: 'center', marginBottom: 8 }}><CircleDot size={14} style={{ color: '#f44853', verticalAlign: -2 }} /> Turnout สูงสุด</h4>
             <ResponsiveContainer width="100%" height={Math.max(400, highTurnout.length * 22)}>
               <BarChart data={highTurnout} layout="vertical" margin={{ top: 10, right: 60, left: 130, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
@@ -92,7 +92,7 @@ export default function TurnoutAnomaly({ data }: Props) {
             </ResponsiveContainer>
           </div>
           <div>
-            <h4 style={{ color: '#42b8ff', textAlign: 'center', marginBottom: 8 }}>🔵 Turnout ต่ำสุด</h4>
+            <h4 style={{ color: '#42b8ff', textAlign: 'center', marginBottom: 8 }}><CircleDot size={14} style={{ color: '#42b8ff', verticalAlign: -2 }} /> Turnout ต่ำสุด</h4>
             <ResponsiveContainer width="100%" height={Math.max(400, lowTurnout.length * 22)}>
               <BarChart data={lowTurnout} layout="vertical" margin={{ top: 10, right: 60, left: 130, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />

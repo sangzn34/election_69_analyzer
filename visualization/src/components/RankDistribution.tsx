@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { TrendingUp } from 'lucide-react'
 import type { RankDistributionItem } from '../types'
 
 const PARTY_COLORS: Record<number, { name: string; color: string }> = {
@@ -61,7 +62,7 @@ export default function RankDistribution({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">📈</span>
+        <TrendingUp size={20} />
         การกระจายตัวของอันดับคะแนนบัญชีรายชื่อ
       </div>
       <div className="section-desc">

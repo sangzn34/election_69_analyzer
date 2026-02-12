@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, Legend,
 } from 'recharts'
+import { Microscope } from 'lucide-react'
 import type { ScatterItem } from '../types'
 
 interface CustomTooltipProps {
@@ -42,7 +43,7 @@ export default function ScatterAnalysis({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🔬</span>
+        <Microscope size={20} />
         Scatter Plot: คะแนน ส.ส. ผู้ชนะ vs คะแนน PL พรรคส้มหล่น
       </div>
       <div className="section-desc">

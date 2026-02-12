@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { Search, Trophy, Target, AlertTriangle, CircleCheck, Medal, CornerDownRight } from 'lucide-react'
 import type { AreaDetail, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -60,8 +61,8 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
         <div className="label">{label}</div>
         <div className="item">ส.ส. เขต: {d?.mpParty} (อันดับ {d?.mpRank}) — {d?.['คะแนน ส.ส. เขต']?.toLocaleString()} คะแนน</div>
         <div className="item">บัญชีรายชื่อ: {d?.plParty} (อันดับ {d?.plRank}) — {d?.['คะแนน บัญชีรายชื่อ']?.toLocaleString()} คะแนน</div>
-        {d?.isWinner && <div className="item" style={{ color: '#5ed88a' }}>🏆 ส.ส. ผู้ชนะ</div>}
-        {d?.isTarget && <div className="item" style={{ color: '#f44853' }}>🎯 พรรคส้มหล่น</div>}
+        {d?.isWinner && <div className="item" style={{ color: '#5ed88a' }}><Trophy size={12} style={{ verticalAlign: -2 }} /> ส.ส. ผู้ชนะ</div>}
+        {d?.isTarget && <div className="item" style={{ color: '#f44853' }}><Target size={12} style={{ verticalAlign: -2 }} /> พรรคส้มหล่น</div>}
       </div>
     )
   }
@@ -69,16 +70,16 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🔎</span>
+        <Search size={20} />
         เจาะลึกรายเขต: เปรียบเทียบ ส.ส. เขต vs บัญชีรายชื่อ
       </div>
       <div className="section-desc">
         เลือกเขตเพื่อดูการเปรียบเทียบคะแนน ส.ส. เขต กับ คะแนนบัญชีรายชื่อ แบบเบอร์ต่อเบอร์
-        — หากเบอร์ของ ส.ส. ผู้ชนะ (🏆) ตรงกับพรรคส้มหล่น (🎯) ที่ได้คะแนนสูง นั่นคือจุดน่าสงสัย
+        — หากเบอร์ของ ส.ส. ผู้ชนะ ตรงกับพรรคส้มหล่น ที่ได้คะแนนสูง นั่นคือจุดน่าสงสัย
       </div>
 
       <div className="filter-bar">
-        <input type="text" className="search-input" placeholder="🔍 ค้นหาเขต เช่น กรุงเทพ, 1001, บุรีรัมย์..." value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth: 350 }} />
+        <input type="text" className="search-input" placeholder="ค้นหาเขต เช่น กรุงเทพ, 1001, บุรีรัมย์..." value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth: 350 }} />
       </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -88,7 +89,7 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
             border: `1px solid ${area.isSuspicious ? '#f44853' : '#2d3148'}`, borderRadius: 8,
             color: selectedArea === area.areaCode ? '#fff' : '#e8eaed', cursor: 'pointer', fontSize: '0.85rem', fontFamily: 'inherit', transition: 'all 0.2s',
           }}>
-            {area.isSuspicious && '⚠️ '}{area.areaName}
+            {area.isSuspicious && <><AlertTriangle size={12} style={{ verticalAlign: -2 }} /> </>}{area.areaName}
           </button>
         ))}
       </div>
@@ -99,13 +100,13 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <PartyLogo partyName={selectedDetail.winnerPartyName} nameToCodeMap={nameToCodeMap} size={40} />
               <h3 style={{ color: '#e8eaed', fontSize: '1.2rem' }}>{selectedDetail.areaName}</h3>
-              {selectedDetail.isSuspicious ? <span className="badge suspicious">⚠️ น่าสงสัย</span> : <span className="badge normal">✅ ปกติ</span>}
+              {selectedDetail.isSuspicious ? <span className="badge suspicious"><AlertTriangle size={12} style={{ verticalAlign: -2 }} /> น่าสงสัย</span> : <span className="badge normal"><CircleCheck size={12} style={{ verticalAlign: -2 }} /> ปกติ</span>}
             </div>
             <div style={{ color: '#9aa0a6', marginTop: 8, fontSize: '0.9rem' }}>
               ส.ส. ผู้ชนะ: <span style={{ color: selectedDetail.winnerPartyColor, fontWeight: 600 }}>{selectedDetail.winnerPartyName}</span> เบอร์ {selectedDetail.winnerNum}
               {selectedDetail.winnerName && <span style={{ color: '#e8eaed', marginLeft: 8 }}>— {selectedDetail.winnerName}</span>}
-              {selectedDetail.winnerIs66Winner && <span style={{ background: '#ff8a4d22', color: '#ff8a4d', padding: '2px 8px', borderRadius: 6, marginLeft: 8, fontSize: '0.8rem' }}>🏅 ส.ส. ปี 66</span>}
-              {selectedDetail.winnerSwitchedParty === true && <span style={{ background: '#f4485322', color: '#f44853', padding: '2px 8px', borderRadius: 6, marginLeft: 6, fontSize: '0.8rem' }}>↪ ย้ายพรรค</span>}
+              {selectedDetail.winnerIs66Winner && <span style={{ background: '#ff8a4d22', color: '#ff8a4d', padding: '2px 8px', borderRadius: 6, marginLeft: 8, fontSize: '0.8rem' }}><Medal size={12} style={{ verticalAlign: -2 }} /> ส.ส. ปี 66</span>}
+              {selectedDetail.winnerSwitchedParty === true && <span style={{ background: '#f4485322', color: '#f44853', padding: '2px 8px', borderRadius: 6, marginLeft: 6, fontSize: '0.8rem' }}><CornerDownRight size={12} style={{ verticalAlign: -2 }} /> ย้ายพรรค</span>}
               {selectedDetail.isSuspicious && selectedDetail.targetPartyNum && <span style={{ color: '#f44853', marginLeft: 16 }}>→ พรรคส้มหล่นเบอร์ {selectedDetail.targetPartyNum} ติด TOP 7 ของ PL</span>}
             </div>
           </div>
@@ -142,8 +143,8 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
                         <td style={{ fontWeight: 700 }}>{c.num}</td>
                         <td style={{ color: '#e8eaed', fontSize: '0.85rem' }}>
                           {c.mp?.candidateName || '-'}
-                          {c.mp?.is66Winner && <span style={{ color: '#ff8a4d', marginLeft: 4, fontSize: '0.75rem' }}>🏅66</span>}
-                          {c.mp?.switchedParty === true && <span style={{ color: '#f44853', marginLeft: 4, fontSize: '0.75rem' }}>↪️</span>}
+                          {c.mp?.is66Winner && <span style={{ color: '#ff8a4d', marginLeft: 4, fontSize: '0.75rem' }}><Medal size={10} style={{ verticalAlign: -1 }} />66</span>}
+                          {c.mp?.switchedParty === true && <span style={{ color: '#f44853', marginLeft: 4, fontSize: '0.75rem' }}><CornerDownRight size={12} /></span>}
                         </td>
                         <td style={{ color: c.mp?.partyColor || '#666', fontSize: '0.85rem' }}>{c.mp?.partyName || '-'}</td>
                         <td>{c.mp?.voteTotal?.toLocaleString() || '-'}</td>
@@ -151,8 +152,8 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
                         <td style={{ color: c.pl?.partyColor || '#666', fontSize: '0.85rem' }}>{c.pl?.partyName || '-'}</td>
                         <td>{c.pl?.voteTotal?.toLocaleString() || '-'}</td>
                         <td>
-                          {isWinner && <span style={{ color: '#5ed88a' }}>🏆 ผู้ชนะ</span>}
-                          {isTarget && <span style={{ color: '#f44853', marginLeft: 4 }}>🎯 ส้มหล่น</span>}
+                          {isWinner && <span style={{ color: '#5ed88a' }}><Trophy size={12} style={{ verticalAlign: -2 }} /> ผู้ชนะ</span>}
+                          {isTarget && <span style={{ color: '#f44853', marginLeft: 4 }}><Target size={12} style={{ verticalAlign: -2 }} /> ส้มหล่น</span>}
                         </td>
                       </tr>
                     )
@@ -164,7 +165,7 @@ export default function AreaExplorer({ data, nameToCodeMap }: Props) {
       )}
 
       {!selectedDetail && (
-        <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>👆 เลือกเขตด้านบนเพื่อดูรายละเอียด</div>
+        <div style={{ textAlign: 'center', padding: 60, color: '#6b7280' }}>เลือกเขตด้านบนเพื่อดูรายละเอียด</div>
       )}
     </div>
   )

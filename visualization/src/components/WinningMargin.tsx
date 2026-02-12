@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
-import { Flame, Mountain } from 'lucide-react'
+import { Flame, Mountain, Flag, Trophy, Medal } from 'lucide-react'
 import type { WinningMarginItem } from '../types'
 
 interface TooltipProps {
@@ -16,8 +16,8 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
   return (
     <div className="custom-tooltip">
       <div className="label">{d.areaName}</div>
-      <div className="item" style={{ color: d.winnerPartyColor }}>🏆 {d.winnerParty}: {d.winnerVotes.toLocaleString()} คะแนน</div>
-      <div className="item">🥈 {d.runnerUpParty}: {d.runnerUpVotes.toLocaleString()} คะแนน</div>
+      <div className="item" style={{ color: d.winnerPartyColor }}><Trophy size={14} style={{ verticalAlign: -2 }} /> {d.winnerParty}: {d.winnerVotes.toLocaleString()} คะแนน</div>
+      <div className="item"><Medal size={14} style={{ verticalAlign: -2 }} /> {d.runnerUpParty}: {d.runnerUpVotes.toLocaleString()} คะแนน</div>
       <div className="item" style={{ fontWeight: 700, color: d.marginPercent < 5 ? '#f44853' : '#5ed88a' }}>
         ห่างกัน: {d.margin.toLocaleString()} คะแนน ({d.marginPercent.toFixed(1)}%)
       </div>
@@ -54,7 +54,7 @@ export default function WinningMargin({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🏁</span>
+        <Flag size={20} />
         Winning Margin: เขตที่สูสีที่สุด vs ชนะขาดลอย
       </div>
       <div className="section-desc">
@@ -114,7 +114,7 @@ export default function WinningMargin({ data }: Props) {
 
       <div className="province-table-container" style={{ marginTop: 24, maxHeight: 500, overflowY: 'auto' }}>
         <table className="province-table">
-          <thead><tr><th>#</th><th>เขต</th><th>จังหวัด</th><th>🏆 อันดับ 1</th><th>คะแนน</th><th>🥈 อันดับ 2</th><th>คะแนน</th><th>ส่วนต่าง</th><th>% Margin</th></tr></thead>
+          <thead><tr><th>#</th><th>เขต</th><th>จังหวัด</th><th>อันดับ 1</th><th>คะแนน</th><th>อันดับ 2</th><th>คะแนน</th><th>ส่วนต่าง</th><th>% Margin</th></tr></thead>
           <tbody>
             {displayData.map((row, i) => (
               <tr key={row.areaCode}>

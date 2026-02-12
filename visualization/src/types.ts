@@ -105,6 +105,26 @@ export interface ProvinceSummaryItem {
   suspiciousPercent: number
 }
 
+// ─── Province Map Data ───
+export interface ProvinceMapParty {
+  partyCode: string
+  partyName: string
+  partyColor: string
+  seats: number
+}
+
+export interface ProvinceMapItem {
+  provinceThai: string
+  provinceEng: string
+  totalSeats: number
+  suspiciousCount: number
+  dominantParty: string
+  dominantPartyCode: string
+  dominantPartyColor: string
+  dominantPartySeats: number
+  parties: ProvinceMapParty[]
+}
+
 // ─── Region Summary ───
 export interface RegionPartyDetail {
   partyName: string
@@ -129,6 +149,7 @@ export interface CombinedCandidate {
     partyColor: string
     candidateName: string
     voteTotal: number
+    votePercent?: number
     rank: number
     is66Winner?: boolean
     switchedParty?: boolean
@@ -159,7 +180,10 @@ export interface AreaDetail {
 // ─── Party Switcher ───
 export interface PartySwitcherFlow {
   fromParty66: string
+  fromCode66: string
+  fromColor66: string
   toParty: string
+  toPartyCode: string
   toColor: string
   count: number
   names: string[]
@@ -188,12 +212,15 @@ export interface RetentionSummaryItem {
 }
 
 export interface WinnerRetentionItem {
+  areaCode: string
   areaName: string
   winnerName: string
   partyName: string
   partyColor: string
-  status: string
+  is66Winner?: boolean
+  switchedParty?: boolean | null
   party66Ref?: string
+  status: string
 }
 
 export interface Lost66WinnerItem {
@@ -242,17 +269,6 @@ export interface PartyListArea {
   results: PartyListResult[]
 }
 
-// ─── New Data: Referendum ───
-export interface ReferendumArea {
-  areaCode: string
-  agree: number
-  disagree: number
-  goodVotes: number
-  badVotes: number
-  noVotes: number
-  voteProgressPercent: number
-}
-
 // ─── New Analysis Types ───
 export interface TurnoutAnomalyItem {
   areaCode: string
@@ -291,18 +307,6 @@ export interface WinningMarginItem {
   runnerUpPercent: number
   margin: number
   marginPercent: number
-}
-
-export interface ReferendumCorrelationItem {
-  areaCode: string
-  areaName: string
-  province: string
-  agreePercent: number
-  disagreePercent: number
-  turnoutPercent: number
-  mpWinnerParty: string
-  mpWinnerPercent: number
-  winnerPartyColor: string
 }
 
 // ─── Ensemble Suspicion Score ───
@@ -615,6 +619,29 @@ export interface ElectionComparison {
   }
 }
 
+// ─── Switcher Vote Comparison (66 vs 69 individual votes) ───
+export interface SwitcherVoteComparisonItem {
+  areaCode: string
+  areaName: string
+  province: string
+  name: string
+  party66: string
+  party66Color: string
+  party69: string
+  party69Color: string
+  switchedParty: boolean
+  is66Winner: boolean
+  rank66: number
+  votes66: number
+  pct66: number
+  rank69: number
+  votes69: number
+  pct69: number
+  voteDelta: number
+  pctDelta: number
+  portrait66: string
+}
+
 // ─── Full Election Data ───
 export interface ElectionData {
   summary: Summary
@@ -627,6 +654,7 @@ export interface ElectionData {
   candidateNumbers: CandidateNumberItem[]
   voteAnomaly: VoteAnomalyItem[]
   provinceSummary: ProvinceSummaryItem[]
+  provinceMapData?: ProvinceMapItem[]
   regionSummary: RegionSummaryItem[]
   areaDetails: AreaDetail[]
   partySwitcherFlows: PartySwitcherFlow[]
@@ -634,11 +662,12 @@ export interface ElectionData {
   retentionSummary: RetentionSummaryItem[]
   winnerRetention: WinnerRetentionItem[]
   lost66Winners: Lost66WinnerItem[]
+  // Switcher Vote Comparison (66 vs 69)
+  switcherVoteComparison?: SwitcherVoteComparisonItem[]
   // New data
   turnoutAnomaly?: TurnoutAnomalyItem[]
   voteSplitting?: VoteSplittingItem[]
   winningMargins?: WinningMarginItem[]
-  referendumCorrelation?: ReferendumCorrelationItem[]
   // Spoiled Ballot Comparison
   spoiledComparison?: SpoiledComparisonItem[]
   spoiledComparisonMeta?: SpoiledComparisonMeta

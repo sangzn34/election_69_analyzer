@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { Globe } from 'lucide-react'
 import type { RegionSummaryItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -64,7 +65,7 @@ export default function RegionBreakdown({ data, nameToCodeMap }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🌍</span>
+        <Globe size={20} />
         วิเคราะห์แยกตามภูมิภาค
       </div>
       <div className="section-desc">แสดงจำนวนเขตน่าสงสัยในแต่ละภูมิภาค พร้อมแยกตามพรรคที่ชนะ</div>

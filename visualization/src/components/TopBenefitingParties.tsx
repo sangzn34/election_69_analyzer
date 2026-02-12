@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
+import { Target } from 'lucide-react'
 import type { TargetPartyCount, PartyMetaMap, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -70,7 +71,7 @@ export default function TopBenefitingParties({ data, partyMeta, nameToCodeMap }:
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🎯</span>
+        <Target size={20} />
         10 อันดับพรรคบัญชีรายชื่อที่ได้รับประโยชน์สูงสุด (พรรคส้มหล่น)
       </div>
       <div className="section-desc">

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { MapPin, Search } from 'lucide-react'
 import type { ProvinceSummaryItem } from '../types'
 
 interface CustomTooltipProps {
@@ -43,13 +44,13 @@ export default function ProvinceBreakdown({ data }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🗺️</span>
+        <MapPin size={20} />
         จังหวัดที่พบเขตน่าสงสัย
       </div>
       <div className="section-desc">แสดงจำนวนเขตที่น่าสงสัยในแต่ละจังหวัด (แสดง Top 20)</div>
 
       <div className="filter-bar">
-        <input type="text" className="search-input" placeholder="🔍 ค้นหาจังหวัด..." value={search} onChange={e => setSearch(e.target.value)} />
+        <input type="text" className="search-input" placeholder="ค้นหาจังหวัด..." value={search} onChange={e => setSearch(e.target.value)} />
         <div className="tabs" style={{ marginBottom: 0 }}>
           <button className={`tab ${sortBy === 'suspicious' ? 'active' : ''}`} onClick={() => setSortBy('suspicious')}>เรียงตามจำนวน</button>
           <button className={`tab ${sortBy === 'percent' ? 'active' : ''}`} onClick={() => setSortBy('percent')}>เรียงตาม %</button>

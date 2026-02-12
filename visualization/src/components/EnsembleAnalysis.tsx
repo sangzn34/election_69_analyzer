@@ -11,7 +11,7 @@ import {
   Radar as RadarIcon, Table2, Target, Tag, TriangleAlert, FlaskConical,
   TrendingUp, Vote, Users, Scale, Trash2, Crown, Ban, Building2,
   Sparkles, Thermometer, ShieldCheck, RefreshCw, Gauge, Hash, Shuffle,
-  Fingerprint, Binary, Sigma,
+  Fingerprint, Binary, Sigma, BookOpen,
 } from 'lucide-react'
 import type { EnsembleAnalysisItem, EnsemblePartySummaryItem, EnsembleMeta, NameToCodeMap, BenfordDigitItem, NullModelAnalysis, KlimekAnalysis, LastDigitAnalysis, SecondDigitBenfordAnalysis } from '../types'
 import PartyLogo from './PartyLogo'
@@ -115,10 +115,10 @@ function pct(n: number, total: number) {
 }
 
 function confidenceLabel(conf: string) {
-  if (conf === 'very-high') return '★★★ p<0.01'
-  if (conf === 'high') return '★★ p<0.05'
-  if (conf === 'moderate') return '★ p<0.10'
-  return '— ไม่มีนัยสำคัญ'
+  if (conf === 'very-high') return <><Star size={10} /><Star size={10} /><Star size={10} /> p&lt;0.01</>
+  if (conf === 'high') return <><Star size={10} /><Star size={10} /> p&lt;0.05</>
+  if (conf === 'moderate') return <><Star size={10} /> p&lt;0.10</>
+  return <>— ไม่มีนัยสำคัญ</>
 }
 
 function confidenceStyle(conf: string): React.CSSProperties {
@@ -178,11 +178,11 @@ const FEATURE_COLORS: Record<string, string> = {
 }
 
 const FOCUS_AREA_LABELS: Record<string, string> = {
-  'hot-area': '🔥 พื้นที่ร้อน',
-  'mueang': '🏙️ เมือง',
-  'powerhouse': '💪 ฐานเสียง',
-  'thailand-cambodia-border': '🇰🇭 ชายแดนไทย-กัมพูชา',
-  'three-southern-border': '🕌 สามจังหวัดชายแดนใต้',
+  'hot-area': 'พื้นที่ร้อน',
+  'mueang': 'เมือง',
+  'powerhouse': 'ฐานเสียง',
+  'thailand-cambodia-border': 'ชายแดนไทย-กัมพูชา',
+  'three-southern-border': 'สามจังหวัดชายแดนใต้',
 }
 
 const FOCUS_AREA_COLORS: Record<string, string> = {
@@ -351,7 +351,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🧪</span>
+        <FlaskConical size={20} />
         Ensemble Suspicion Score — 10 Indicators
       </div>
       <div className="section-desc">
@@ -367,7 +367,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
         borderRadius: 10, border: '1px solid #2a2a4a', lineHeight: 1.9,
       }}>
         <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>📖</span> วิธีการวิเคราะห์ (Methodology)
+          <BookOpen size={20} /> วิธีการวิเคราะห์ (Methodology)
         </div>
 
         <div style={{ fontSize: 13, marginBottom: 12 }}>
@@ -627,8 +627,8 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                   <PartyLogo partyCode={p.partyCode} partyName={p.partyName} nameToCodeMap={nameToCodeMap} size={22} />
                   <span style={{ fontSize: 13, minWidth: 120 }}>{p.partyName} ({p.totalAreas})</span>
                   <span style={{ fontSize: 11, opacity: 0.6 }}>avg {p.avgScore} | med {p.medianScore}</span>
-                  <span style={{ fontSize: 11, color: '#42b8ff' }}>★ sig: {p.significantCount}</span>
-                  {p.hotspotCount > 0 && <span style={{ fontSize: 11, color: '#e879f9' }}>🗺️ HH: {p.hotspotCount}</span>}
+                  <span style={{ fontSize: 11, color: '#42b8ff' }}><Star size={10} style={{ verticalAlign: -1 }} /> sig: {p.significantCount}</span>
+                  {p.hotspotCount > 0 && <span style={{ fontSize: 11, color: '#e879f9' }}><MapIcon size={12} style={{ verticalAlign: -2 }} /> HH: {p.hotspotCount}</span>}
                 </div>
                 <div style={{ display: 'flex', height: 18, borderRadius: 4, overflow: 'hidden', background: '#1a1a2e' }}>
                   {p.highRiskCount > 0 && (
@@ -665,7 +665,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
               </div>
             ))}
             <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11, opacity: 0.6 }}>
-              <span>🔴 High (≥50)</span> <span>🟡 Medium (30-49)</span> <span>🟢 Low (&lt;30)</span>
+              <span><CircleDot size={10} style={{ color: '#f44853', verticalAlign: -1 }} /> High (≥50)</span> <span><CircleDot size={10} style={{ color: '#facc15', verticalAlign: -1 }} /> Medium (30-49)</span> <span><CircleDot size={10} style={{ color: '#22c55e', verticalAlign: -1 }} /> Low (&lt;30)</span>
             </div>
           </div>
         </div>
@@ -780,7 +780,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
               padding: 12, background: 'var(--bg-card)', borderRadius: 8, marginBottom: 16,
               border: '1px solid var(--border-color)', fontSize: 13,
             }}>
-              🗺️ <strong>Global Moran&apos;s I = {meta.globalMoranI}</strong>
+              <MapIcon size={16} style={{ verticalAlign: -3 }} /> <strong>Global Moran&apos;s I = {meta.globalMoranI}</strong>
               <span style={{ opacity: 0.7, marginLeft: 8 }}>
                 ({meta.globalMoranI > 0 ? 'Positive spatial autocorrelation — suspicious areas tend to cluster' : 'No significant spatial pattern'})
               </span>
@@ -789,7 +789,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
 
           {/* Spatial cluster table */}
           <h3 style={{ fontSize: 14, marginBottom: 12, color: '#f44853' }}>
-            🔥 Spatial Clusters — เขตที่มีรูปแบบทางภูมิศาสตร์
+            <Thermometer size={14} style={{ verticalAlign: -2 }} /> Spatial Clusters — เขตที่มีรูปแบบทางภูมิศาสตร์
           </h3>
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table" style={{ width: '100%', fontSize: 12 }}>
@@ -1136,7 +1136,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                           <div>SE: {d.se.toFixed(4)}pp</div>
                           <div>n (areas): {d.n}</div>
                           <div>MC p-value: {d.pValueMC < 0.001 ? '<0.001' : d.pValueMC.toFixed(4)}</div>
-                          {d.isBonferroniSig && <div style={{ color: '#f44853', fontWeight: 700 }}>⚠️ Bonferroni significant</div>}
+                          {d.isBonferroniSig && <div style={{ color: '#f44853', fontWeight: 700 }}><TriangleAlert size={12} style={{ verticalAlign: -2 }} /> Bonferroni significant</div>}
                         </div>
                       )
                     }}
@@ -1337,7 +1337,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       {d.isBonferroniSig ? (
-                        <span style={{ color: '#f44853', fontWeight: 700, fontSize: 10 }}>⚠️ SIG</span>
+                        <span style={{ color: '#f44853', fontWeight: 700, fontSize: 10 }}><TriangleAlert size={10} style={{ verticalAlign: -1 }} /> SIG</span>
                       ) : (
                         <span style={{ opacity: 0.3, fontSize: 10 }}>—</span>
                       )}
@@ -1368,7 +1368,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
             {nullModel.meta.nSignificant === 0 ? (
               <div style={{ fontSize: 13 }}>
                 <div style={{ marginBottom: 12, padding: '12px 16px', background: '#10b98115', borderRadius: 8, border: '1px solid #10b98133' }}>
-                  <strong style={{ fontSize: 14 }}>🔬 ผลการทดสอบ:</strong> จากการจำลอง {nullModel.meta.nIterations.toLocaleString()} รอบ
+                  <strong style={{ fontSize: 14 }}><Microscope size={14} style={{ verticalAlign: -2 }} /> ผลการทดสอบ:</strong> จากการจำลอง {nullModel.meta.nIterations.toLocaleString()} รอบ
                   ของโลกที่ &quot;ไม่มี twin-number effect&quot; พบว่า pattern ที่สังเกตได้ <strong>อยู่ภายในขอบเขตปกติ</strong> ของความบังเอิญ
                 </div>
 
@@ -1377,7 +1377,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                   gap: 12, marginBottom: 16,
                 }}>
                   <div style={{ padding: '12px 14px', background: '#ffffff08', borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#22d3ee' }}>📊 ค่า max|z| ที่สังเกตได้</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#22d3ee' }}><BarChart3 size={12} style={{ verticalAlign: -2 }} /> ค่า max|z| ที่สังเกตได้</div>
                     <div>Observed max|z| = <strong>{nullModel.meta.observedMaxAbsZ.toFixed(3)}</strong></div>
                     <div>Null distribution median = <strong>{nullModel.meta.nullMaxZPercentiles?.p50?.toFixed(3) ?? 'N/A'}</strong></div>
                     <div>Null distribution p95 = <strong>{nullModel.meta.nullMaxZPercentiles?.p95?.toFixed(3) ?? 'N/A'}</strong></div>
@@ -1387,7 +1387,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                   </div>
 
                   <div style={{ padding: '12px 14px', background: '#ffffff08', borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#a78bfa' }}>🎲 MC Global p-value</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#a78bfa' }}><Shuffle size={12} style={{ verticalAlign: -2 }} /> MC Global p-value</div>
                     <div>p = <strong>{nullModel.meta.mcPValueGlobal.toFixed(4)}</strong></div>
                     <div style={{ marginTop: 4 }}>
                       ≈ {(nullModel.meta.mcPValueGlobal * 100).toFixed(1)}% ของการสุ่ม ได้ max|z| สูงกว่าที่สังเกตได้
@@ -1398,7 +1398,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                   </div>
 
                   <div style={{ padding: '12px 14px', background: '#ffffff08', borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#fbbf24' }}>🔒 Bonferroni Correction</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#fbbf24' }}><ShieldCheck size={12} style={{ verticalAlign: -2 }} /> Bonferroni Correction</div>
                     <div>α<sub>corrected</sub> = {nullModel.meta.bonferroniAlpha.toFixed(4)}</div>
                     <div>Critical |z| = {nullModel.meta.bonferroniZCritical}</div>
                     <div>ผ่าน threshold: <strong>{nullModel.meta.nSignificant}/{nullModel.meta.nPartyNumbers} หมายเลข</strong></div>
@@ -1409,7 +1409,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                 </div>
 
                 <div style={{ padding: '12px 16px', background: '#ffffff08', borderRadius: 8, marginBottom: 12 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: '#f472b6' }}>📋 Case Studies สำคัญ:</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: '#f472b6' }}><Target size={12} style={{ verticalAlign: -2 }} /> Case Studies สำคัญ:</div>
                   <div style={{
                     display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 8,
                   }}>
@@ -1439,7 +1439,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                   padding: '12px 16px', background: '#10b98115', borderRadius: 8,
                   border: '1px solid #10b98133',
                 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>💡 ความหมาย:</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}><Sparkles size={14} style={{ verticalAlign: -2 }} /> ความหมาย:</div>
                   <div>
                     ผลลัพธ์ชี้ว่า pattern &quot;ผู้ชนะหมายเลข j ทำให้พรรค PL หมายเลข j ได้คะแนนเพิ่ม&quot;
                     <strong> ไม่มีหลักฐานทางสถิติ</strong>ที่แข็งแกร่ง — observed max|z| ({nullModel.meta.observedMaxAbsZ.toFixed(2)})
@@ -1448,7 +1448,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                     อาจเกิดจาก <strong>base rate</strong> ของการตรงกันโดยบังเอิญ ไม่ใช่จาก twin-number effect จริง
                   </div>
                   <div style={{ marginTop: 8 }}>
-                    <strong>⚠️ ข้อควรระวัง:</strong> การไม่พบ statistical significance ≠ พิสูจน์ว่าไม่มีการซื้อเสียง
+                    <strong><TriangleAlert size={12} style={{ verticalAlign: -2 }} /> ข้อควรระวัง:</strong> การไม่พบ statistical significance ≠ พิสูจน์ว่าไม่มีการซื้อเสียง
                     — อาจมีกลไกอื่นที่ไม่ใช่ twin-number pattern, หรือ effect size เล็กเกินกว่าจะตรวจจับได้
                     ด้วย sample size 400 เขต
                   </div>
@@ -1662,14 +1662,14 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
             <div style={{ fontSize: 13, lineHeight: 1.8 }}>
               {(klimek.meta.highHighCount ?? 0) <= 10 ? (
                 <>
-                  ✅ ไม่พบ pattern ของ ballot stuffing — มีเพียง <strong>{klimek.meta.highHighCount ?? 0}</strong> เขต
+                  <ShieldCheck size={14} style={{ verticalAlign: -2, color: '#10b981' }} /> ไม่พบ pattern ของ ballot stuffing — มีเพียง <strong>{klimek.meta.highHighCount ?? 0}</strong> เขต
                   ใน High-High zone (Turnout&gt;80%, Winner Share&gt;60%).
                   Correlation (r) = <strong>{klimek.meta.correlation?.toFixed(3)}</strong> ซึ่ง{Math.abs(klimek.meta.correlation ?? 0) < 0.3 ? 'ต่ำ (ดี)' : 'ปานกลาง'}.
                   กราฟ scatter กระจายตัวเป็น blob ไม่มี ridge ไปทาง (100%, 100%).
                 </>
               ) : (
                 <>
-                  ⚠️ พบ <strong>{klimek.meta.highHighCount ?? 0}</strong> เขตใน High-High zone —
+                  <TriangleAlert size={14} style={{ verticalAlign: -2, color: '#fbbf24' }} /> พบ <strong>{klimek.meta.highHighCount ?? 0}</strong> เขตใน High-High zone —
                   อาจมี pattern ที่น่าสงสัย ควรตรวจสอบเพิ่มเติม
                 </>
               )}
@@ -1800,14 +1800,14 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
             <div style={{ fontSize: 13, lineHeight: 1.8 }}>
               {lastDigit.globalPValue >= 0.05 ? (
                 <>
-                  ✅ Global last-digit distribution <strong>ผ่าน</strong> uniformity test (χ²={lastDigit.globalChi2}, p={lastDigit.globalPValue}).
+                  <ShieldCheck size={14} style={{ verticalAlign: -2, color: '#10b981' }} /> Global last-digit distribution <strong>ผ่าน</strong> uniformity test (χ²={lastDigit.globalChi2}, p={lastDigit.globalPValue}).
                   หลักสุดท้ายของจำนวนโหวตกระจายสม่ำเสมอ ไม่พบ pattern ของการปลอมแปลงตัวเลข.
                   มี <strong>{lastDigit.deviateCount}</strong> เขต ({(lastDigit.deviateCount / (lastDigit.conformCount + lastDigit.deviateCount) * 100).toFixed(1)}%)
                   ที่เบี่ยงเบนในระดับเขต ซึ่งเป็นอัตราที่คาดหวังได้จาก random variation.
                 </>
               ) : (
                 <>
-                  ⚠️ Global last-digit distribution เบี่ยงเบนจาก uniform (χ²={lastDigit.globalChi2}, p={lastDigit.globalPValue}).
+                  <TriangleAlert size={14} style={{ verticalAlign: -2, color: '#fbbf24' }} /> Global last-digit distribution เบี่ยงเบนจาก uniform (χ²={lastDigit.globalChi2}, p={lastDigit.globalPValue}).
                   มี <strong>{lastDigit.deviateCount}</strong> เขตที่เบี่ยงเบน — ควรตรวจสอบ pattern เพิ่มเติม.
                 </>
               )}
@@ -1960,7 +1960,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
             <div style={{ fontSize: 13, lineHeight: 1.8 }}>
               {secondDigitBenford.globalPValue >= 0.05 ? (
                 <>
-                  ✅ Global 2nd-digit distribution <strong>สอดคล้อง</strong>กับ Benford&apos;s Law (χ²={secondDigitBenford.globalChi2}, p={secondDigitBenford.globalPValue}).
+                  <ShieldCheck size={14} style={{ verticalAlign: -2, color: '#10b981' }} /> Global 2nd-digit distribution <strong>สอดคล้อง</strong>กับ Benford&apos;s Law (χ²={secondDigitBenford.globalChi2}, p={secondDigitBenford.globalPValue}).
                   หลักที่ 2 ของจำนวนโหวตเป็นไปตามการกระจายที่คาดหวังทางสถิติ.
                   มี <strong>{secondDigitBenford.deviateCount}</strong> เขตที่เบี่ยงเบน ({(secondDigitBenford.deviateCount / (secondDigitBenford.conformCount + secondDigitBenford.deviateCount) * 100).toFixed(1)}%)
                   ซึ่งเป็นอัตราปกติจาก random variation.
@@ -1968,7 +1968,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                 </>
               ) : (
                 <>
-                  ⚠️ Global 2nd-digit distribution เบี่ยงเบนจาก Benford&apos;s Law (χ²={secondDigitBenford.globalChi2}, p={secondDigitBenford.globalPValue}).
+                  <TriangleAlert size={14} style={{ verticalAlign: -2, color: '#fbbf24' }} /> Global 2nd-digit distribution เบี่ยงเบนจาก Benford&apos;s Law (χ²={secondDigitBenford.globalChi2}, p={secondDigitBenford.globalPValue}).
                   มี <strong>{secondDigitBenford.deviateCount}</strong> เขตที่เบี่ยงเบน — ควรตรวจสอบ digit pattern เพิ่มเติม.
                 </>
               )}
@@ -2072,7 +2072,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                         background: labelColor(d.semiSupervisedLabel) + '22',
                         color: labelColor(d.semiSupervisedLabel),
                       }}>
-                        {d.semiSupervisedLabel === 'suspect' ? '🚨' : d.semiSupervisedLabel === 'elevated' ? '⬆️' : '✅'}
+                        {d.semiSupervisedLabel === 'suspect' ? <CircleAlert size={12} /> : d.semiSupervisedLabel === 'elevated' ? <TrendingUp size={12} /> : <ShieldCheck size={12} />}
                       </span>
                     ) : (
                       <span style={{ opacity: 0.3, fontSize: 10 }}>—</span>
@@ -2088,7 +2088,7 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                             color: FOCUS_AREA_COLORS[tag] || '#888',
                             whiteSpace: 'nowrap',
                           }}>
-                            {tag === 'hot-area' ? '🔥' : tag === 'mueang' ? '🏙️' : tag === 'powerhouse' ? '💪' : tag === 'thailand-cambodia-border' ? '🇰🇭' : '🕌'}
+                            {tag === 'hot-area' ? <Thermometer size={10} /> : tag === 'mueang' ? <Building2 size={10} /> : tag === 'powerhouse' ? <Crown size={10} /> : tag === 'thailand-cambodia-border' ? <MapIcon size={10} /> : <Tag size={10} />}
                           </span>
                         ))}
                       </div>

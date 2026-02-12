@@ -14,6 +14,7 @@ CONSTITUENCY_FILE = os.path.join(BASE_DIR, 'data', 'constituency.json')
 PARTYLIST_FILE = os.path.join(BASE_DIR, 'data', 'party_list.json')
 REFERENDUM_FILE = os.path.join(BASE_DIR, 'data', 'referendum.json')
 FOCUS_AREAS_FILE = os.path.join(BASE_DIR, 'data', 'focus_areas.json')
+ELECTION66_LEADING_FILE = os.path.join(BASE_DIR, 'data', 'election66_leading_candidates.json')
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), '..', 'public', 'election_data.json')
 
 PARTY_META = {
@@ -111,6 +112,31 @@ def main():
         if area_key not in candidates_by_area:
             candidates_by_area[area_key] = []
         candidates_by_area[area_key].append(c)
+
+    # ===== Load Election 66 Leading Candidates (ThaiPBS API) =====
+    # Provides top-3 candidates per area with vote counts from 2566 election
+    election66_lookup = {}  # (firstName, lastName, areaCode) -> {votes66, pct66, rank66, ...}
+    if os.path.exists(ELECTION66_LEADING_FILE):
+        with open(ELECTION66_LEADING_FILE, 'r', encoding='utf-8') as f:
+            e66_raw = json.load(f)
+        for area_item in e66_raw.get('data', []):
+            ac = area_item.get('areaRefCode', '')
+            for r in area_item.get('leadingCandidateResults', []):
+                tr = r.get('candidate', {}).get('translations', {}).get('th', {})
+                fname = tr.get('firstName', '').strip()
+                lname = tr.get('lastName', '').strip()
+                if fname and lname:
+                    election66_lookup[(fname, lname, ac)] = {
+                        'votes66': r.get('totalVotes', 0),
+                        'pct66': r.get('votePercent', 0),
+                        'rank66': r.get('rank', 0),
+                        'isWinner66': r.get('isWinner', False),
+                        'party66': r.get('partyRefCode', ''),
+                        'portrait66': r.get('candidate', {}).get('images', {}).get('portraitImageUrl', ''),
+                    }
+        print(f"  📊 Election 66 leading candidates loaded: {len(election66_lookup)} entries from {len(e66_raw.get('data', []))} areas")
+    else:
+        print(f"  ⚠️ Election 66 data not found: {ELECTION66_LEADING_FILE}")
 
     # Extract province from area name
     def get_province(area_name):
@@ -520,21 +546,204 @@ def main():
             'suspiciousPercent': round(data['suspicious'] / data['total'] * 100, 1) if data['total'] > 0 else 0,
         })
 
+    # ===== Province Map Data (for GeoJSON choropleth) =====
+    THAI_TO_GEO = {
+        'กระบี่': 'Krabi',
+        'กรุงเทพมหานคร': 'Bangkok Metropolis',
+        'กาญจนบุรี': 'Kanchanaburi',
+        'กาฬสินธุ์': 'Kalasin',
+        'กำแพงเพชร': 'Kamphaeng Phet',
+        'ขอนแก่น': 'Khon Kaen',
+        'จันทบุรี': 'Chanthaburi',
+        'ฉะเชิงเทรา': 'Chachoengsao',
+        'ชลบุรี': 'Chon Buri',
+        'ชัยนาท': 'Chai Nat',
+        'ชัยภูมิ': 'Chaiyaphum',
+        'ชุมพร': 'Chumphon',
+        'ตรัง': 'Trang',
+        'ตราด': 'Trat',
+        'ตาก': 'Tak',
+        'นครนายก': 'Nakhon Nayok',
+        'นครปฐม': 'Nakhon Pathom',
+        'นครพนม': 'Nakhon Phanom',
+        'นครราชสีมา': 'Nakhon Ratchasima',
+        'นครศรีธรรมราช': 'Nakhon Si Thammarat',
+        'นครสวรรค์': 'Nakhon Sawan',
+        'นนทบุรี': 'Nonthaburi',
+        'นราธิวาส': 'Narathiwat',
+        'น่าน': 'Nan',
+        'บึงกาฬ': 'Bueng Kan',
+        'บุรีรัมย์': 'Buri Ram',
+        'ปทุมธานี': 'Pathum Thani',
+        'ประจวบคีรีขันธ์': 'Prachuap Khiri Khan',
+        'ปราจีนบุรี': 'Prachin Buri',
+        'ปัตตานี': 'Pattani',
+        'พระนครศรีอยุธยา': 'Phra Nakhon Si Ayutthaya',
+        'พะเยา': 'Phayao',
+        'พังงา': 'Phangnga',
+        'พัทลุง': 'Phatthalung',
+        'พิจิตร': 'Phichit',
+        'พิษณุโลก': 'Phitsanulok',
+        'ภูเก็ต': 'Phuket',
+        'มหาสารคาม': 'Maha Sarakham',
+        'มุกดาหาร': 'Mukdahan',
+        'ยะลา': 'Yala',
+        'ยโสธร': 'Yasothon',
+        'ระนอง': 'Ranong',
+        'ระยอง': 'Rayong',
+        'ราชบุรี': 'Ratchaburi',
+        'ร้อยเอ็ด': 'Roi Et',
+        'ลพบุรี': 'Lop Buri',
+        'ลำปาง': 'Lampang',
+        'ลำพูน': 'Lamphun',
+        'ศรีสะเกษ': 'Si Sa Ket',
+        'สกลนคร': 'Sakon Nakhon',
+        'สงขลา': 'Songkhla',
+        'สตูล': 'Satun',
+        'สมุทรปราการ': 'Samut Prakan',
+        'สมุทรสงคราม': 'Samut Songkhram',
+        'สมุทรสาคร': 'Samut Sakhon',
+        'สระบุรี': 'Saraburi',
+        'สระแก้ว': 'Sa Kaeo',
+        'สิงห์บุรี': 'Sing Buri',
+        'สุพรรณบุรี': 'Suphan Buri',
+        'สุราษฎร์ธานี': 'Surat Thani',
+        'สุรินทร์': 'Surin',
+        'สุโขทัย': 'Sukhothai',
+        'หนองคาย': 'Nong Khai',
+        'หนองบัวลำภู': 'Nong Bua Lam Phu',
+        'อำนาจเจริญ': 'Amnat Charoen',
+        'อุดรธานี': 'Udon Thani',
+        'อุตรดิตถ์': 'Uttaradit',
+        'อุทัยธานี': 'Uthai Thani',
+        'อุบลราชธานี': 'Ubon Ratchathani',
+        'อ่างทอง': 'Ang Thong',
+        'เชียงราย': 'Chiang Rai',
+        'เชียงใหม่': 'Chiang Mai',
+        'เพชรบุรี': 'Phetchaburi',
+        'เพชรบูรณ์': 'Phetchabun',
+        'เลย': 'Loei',
+        'แพร่': 'Phrae',
+        'แม่ฮ่องสอน': 'Mae Hong Son',
+    }
+
+    # Aggregate seat results per province (party -> seat count)
+    province_party_seats = {}  # province_thai -> {partyCode -> count}
+    province_total_voters = {}
+    province_total_votes = {}
+    for vba in vote_buying_analysis:
+        prov = vba['province']
+        pc = vba['winnerPartyCode']
+        if prov not in province_party_seats:
+            province_party_seats[prov] = {}
+            province_total_voters[prov] = 0
+            province_total_votes[prov] = 0
+        province_party_seats[prov][pc] = province_party_seats[prov].get(pc, 0) + 1
+        province_total_voters[prov] += vba.get('winnerVotes', 0)
+
+    # Build province map data list
+    province_map_data = []
+    for prov_thai, prov_eng in THAI_TO_GEO.items():
+        seats = province_party_seats.get(prov_thai, {})
+        total_seats = sum(seats.values())
+        if total_seats == 0:
+            continue
+        # Build party breakdown sorted by seat count desc
+        parties = []
+        for pc, count in sorted(seats.items(), key=lambda x: -x[1]):
+            parties.append({
+                'partyCode': pc,
+                'partyName': get_party_name(pc),
+                'partyColor': get_party_color(pc),
+                'seats': count,
+            })
+        # Dominant party = party with most seats
+        dominant = parties[0] if parties else None
+        prov_data = province_data.get(prov_thai, {'total': 0, 'suspicious': 0})
+        province_map_data.append({
+            'provinceThai': prov_thai,
+            'provinceEng': prov_eng,
+            'totalSeats': total_seats,
+            'suspiciousCount': prov_data['suspicious'],
+            'dominantParty': dominant['partyName'] if dominant else '',
+            'dominantPartyCode': dominant['partyCode'] if dominant else '',
+            'dominantPartyColor': dominant['partyColor'] if dominant else '#666',
+            'dominantPartySeats': dominant['seats'] if dominant else 0,
+            'parties': parties,
+        })
+
+    print(f"  🗺️  Province map data: {len(province_map_data)} provinces")
+
     # Summary stats
     total_areas = len(vote_buying_analysis)
     total_suspicious = sum(1 for x in vote_buying_analysis if x['isSuspicious'])
 
     # ===== CANDIDATE DATA: Party Switcher Analysis =====
-    # party66RefCode is the party NUMBER from 2566 election (e.g. "31" means party #31 in 2566)
-    # We need the 2566 party name mapping — approximate from known data
+    # party66RefCode is the party-list ballot number from the 2566 election
+    # Official source: https://election66-data.thaipbs.or.th/election-result/master/parties.json
+    # refCode = ballot number (1-49 by lottery on 4 Apr 2023, 50-67 by registration order, 1000+ late-registered)
     PARTY_66_NAMES = {
-        '1': 'ก้าวไกล', '2': 'เพื่อไทย', '3': 'รวมไทยสร้างชาติ', '4': 'ภูมิใจไทย',
-        '5': 'พลังประชารัฐ', '6': 'ประชาธิปัตย์', '7': 'ไทยสร้างไทย', '8': 'ชาติไทยพัฒนา',
-        '9': 'ประชาชาติ', '10': 'เสรีรวมไทย', '11': 'ชาติพัฒนากล้า',
-        '14': 'ไทยภักดี', '21': 'ท้องที่ไทย', '22': 'พลังสังคมใหม่',
-        '25': 'ประชาธิปไตยใหม่', '26': 'ไทยศรีวิไลย์',
-        '29': 'เพื่อไทรวมพลัง', '31': 'ก้าวไกล (ก้าวไกล/ประชาชน)',
-        '32': 'พรรค #32', '37': 'เพื่อชาติ',
+        '1': 'ใหม่',                    # New
+        '2': 'ประชาธิปไตยใหม่',         # New Democract
+        '5': 'พลังสังคมใหม่',           # Plung Sungkom Mai
+        '6': 'ครูไทยเพื่อประชาชน',       # Thai Teachers For People
+        '7': 'ภูมิใจไทย',               # Bhumjaithai
+        '8': 'แรงงานสร้างชาติ',          # Nation Building Labour
+        '10': 'อนาคตไทย',               # Thailand's Future (NOT สร้างอนาคตไทย which is refCode 1174)
+        '11': 'ประชาชาติ',              # Prachachat
+        '13': 'ไทยชนะ',                 # Thaichana
+        '14': 'ชาติพัฒนากล้า',          # Chartpattanakla
+        '15': 'กรีน',                   # Green (Thai PBS uses กรีน not เขียว)
+        '17': 'เสมอภาค',                # Equality
+        '18': 'ชาติไทยพัฒนา',           # Chartthaipattana
+        '20': 'เปลี่ยน',                # Change
+        '21': 'ไทยภักดี',               # Thaipakdee
+        '22': 'รวมไทยสร้างชาติ',         # United Thai Nation
+        '24': 'เพื่อชาติ',              # For The National
+        '25': 'เสรีรวมไทย',             # Thai Liberal
+        '26': 'ประชาธิปัตย์',            # Democrat
+        '29': 'เพื่อไทย',               # Pheu Thai
+        '30': 'ทางเลือกใหม่',           # New Alternative
+        '31': 'ก้าวไกล',                # Move Forward
+        '32': 'ไทยสร้างไทย',             # Thai Sang Thai
+        '34': 'แผ่นดินธรรม',            # The Land Of Dharma
+        '36': 'เพื่อชาติไทย',           # Pheu Chart Thai
+        '37': 'พลังประชารัฐ',            # Palang Pracharath
+        '38': 'เพื่อไทรวมพลัง',          # Peu Thai Rumphalang
+        '41': 'ไทยธรรม',                # Thai Morality
+        '42': 'ไทยศรีวิไลย์',           # Thai Civilized
+        '44': 'ราษฎร์วิถี',             # Rat Withi
+        '45': 'แนวทางใหม่',             # The New Way (Thai PBS uses แนวทางใหม่ not ทางใหม่)
+        '46': 'ถิ่นกาขาวชาววิไล',        # Thinkakhao Chaovilai
+        '47': 'รวมแผ่นดิน',             # Thailand Together (Thai PBS: รวมแผ่นดิน, NOT รวมพลัง which is refCode 35)
+        '49': 'รักษ์ผืนป่าประเทศไทย',    # Thai Forest Conservation
+        '50': 'พลังปวงชนไทย',            # Thai People Power (Thai PBS: พลังปวงชนไทย, NOT พลังคนไทย)
+        '56': 'ประชาไทย',               # Thai Population (Thai PBS: ประชาไทย refCode 56, NOT ประชากรไทย which is refCode 63)
+        '58': 'สังคมประชาธิปไตยไทย',     # Thai Social Democratic
+        '59': 'ช่วยชาติ',               # Save The Nation (Thai PBS: ช่วยชาติ, NOT กอบกู้ชาติ)
+        '60': 'ความหวังใหม่',            # New Aspiration
+        '61': 'คลองไทย',                # Klong Thai
+        '63': 'ประชากรไทย',              # Thai Citizen (Thai PBS: ประชากรไทย refCode 63)
+        '64': 'เส้นด้าย',               # Zendai (Thai PBS: เส้นด้าย, NOT เซ็นได)
+        '66': 'พลังประชาธิปไตย',         # Democratic Force
+        '67': 'ไทยสมาร์ท',              # Thai Smart
+        '1147': 'รักษ์ธรรม',             # Rakstham (Thai PBS: refCode 1147 = รักษ์ธรรม)
+    }
+
+    # Party 66 colors from Thai PBS official data
+    PARTY_66_COLORS = {
+        '1': '#142545', '2': '#f05e00', '5': '#bf1a1b', '6': '#ff650e',
+        '7': '#2C3487', '8': '#5000c0', '10': '#A6181E', '11': '#A56F05',
+        '13': '#e1a533', '14': '#fda40a', '15': '#0F9B1F', '17': '#5cc6ec',
+        '18': '#E01883', '20': '#e8172d', '21': '#EBC500', '22': '#000958',
+        '24': '#65B5A7', '25': '#E1AC23', '26': '#2FA3E1', '29': '#E13232',
+        '30': '#0040bc', '31': '#FF7F2B', '32': '#16098C', '34': '#ba7f18',
+        '36': '#fced00', '37': '#2A5DAA', '38': '#4c5694', '41': '#663290',
+        '42': '#ad811d', '44': '#1e339a', '45': '#98090D', '46': '#57235a',
+        '47': '#0518d4', '49': '#8fc440', '50': '#fe0002', '56': '#0741fa',
+        '58': '#e80317', '59': '#1c0780', '60': '#f6ef01', '61': '#006cb7',
+        '63': '#284EDF', '64': '#060709', '66': '#c82e22', '67': '#01bf65',
+        '1147': '#3B912E',
     }
 
     # Build flow: from party66 -> to current party (top flows)
@@ -547,6 +756,7 @@ def main():
         if not from_code:
             continue
         from_name = PARTY_66_NAMES.get(from_code, f'พรรค66 #{from_code}')
+        from_color = PARTY_66_COLORS.get(from_code, '#999999')
         to_name = get_party_name(to_code)
         to_color = get_party_color(to_code)
         key = f"{from_code}|{to_code}"
@@ -554,6 +764,7 @@ def main():
             switcher_flows[key] = {
                 'fromParty66': from_name,
                 'fromCode66': from_code,
+                'fromColor66': from_color,
                 'toParty': to_name,
                 'toPartyCode': to_code,
                 'toColor': to_color,
@@ -675,6 +886,69 @@ def main():
                 'party66Ref': PARTY_66_NAMES.get(c.get('party66RefCode', ''), '') if c.get('party66RefCode') else '',
             })
     lost_66_winners.sort(key=lambda x: x['rank'])
+
+    # ═══════════════════════════════════════════════════════════════
+    # ── SWITCHER VOTE COMPARISON: 66 vs 69 vote data ──
+    # Cross-references election 66 leading candidates API with 69 results
+    # to show how party-switchers' votes changed between elections.
+    # ═══════════════════════════════════════════════════════════════
+    switcher_vote_comparison = []
+    for mp_file in mp_files:
+        area_code = os.path.basename(mp_file).replace('.json', '')
+        with open(mp_file, 'r', encoding='utf-8') as f:
+            mp_data = json.load(f)
+        area_name = area_name_map.get(area_code, f'เขต {area_code}')
+        area_cands = candidates_by_area.get(area_code, [])
+
+        for entry69 in mp_data['entries']:
+            num = int(entry69['candidateCode'][-2:])
+            cand = next((c for c in area_cands if c['number'] == num), None)
+            if not cand:
+                continue
+
+            # Look up this person in election 66 data
+            fname = cand['firstName'].strip()
+            lname = cand['lastName'].strip()
+            e66_data = election66_lookup.get((fname, lname, area_code))
+            if not e66_data:
+                continue  # Not in 66 top-3, skip
+
+            party66_ref = cand.get('party66RefCode', '') or e66_data.get('party66', '')
+            party66_name = PARTY_66_NAMES.get(party66_ref, f'#{party66_ref}') if party66_ref else ''
+            party69_name = get_party_name(cand['partyCode'])
+            switched = cand.get('switchedParty', False)
+
+            vote_delta = entry69['voteTotal'] - e66_data['votes66']
+            pct_delta = round(entry69['votePercent'] - e66_data['pct66'], 2)
+
+            switcher_vote_comparison.append({
+                'areaCode': area_code,
+                'areaName': area_name,
+                'province': get_province(area_name),
+                'name': f"{cand['prefix']}{fname} {lname}",
+                'party66': party66_name,
+                'party66Color': PARTY_66_COLORS.get(party66_ref, '#aaaaaa'),
+                'party69': party69_name,
+                'party69Color': get_party_color(cand['partyCode']),
+                'switchedParty': switched,
+                'is66Winner': e66_data['isWinner66'],
+                'rank66': e66_data['rank66'],
+                'votes66': e66_data['votes66'],
+                'pct66': e66_data['pct66'],
+                'rank69': entry69['rank'],
+                'votes69': entry69['voteTotal'],
+                'pct69': entry69['votePercent'],
+                'voteDelta': vote_delta,
+                'pctDelta': pct_delta,
+                'portrait66': e66_data.get('portrait66', ''),
+            })
+
+    switcher_vote_comparison.sort(key=lambda x: x['pctDelta'])
+    svc_total = len(switcher_vote_comparison)
+    svc_switched = sum(1 for s in switcher_vote_comparison if s['switchedParty'])
+    svc_gained = sum(1 for s in switcher_vote_comparison if s['pctDelta'] > 0)
+    svc_lost = sum(1 for s in switcher_vote_comparison if s['pctDelta'] < 0)
+    print(f"  🔄 Switcher Vote Comparison: {svc_total} matched ({svc_switched} switched party), {svc_gained} gained %, {svc_lost} lost %")
 
     # ===== NEW DATA: Constituency, Party-list, Referendum from ThaiPBS API =====
     constituency_data = {}
@@ -815,37 +1089,6 @@ def main():
             'marginPercent': margin_pct,
         })
     winning_margins.sort(key=lambda x: x['marginPercent'])
-
-    # ===== NEW TAB: Referendum Correlation =====
-    referendum_correlation = []
-    for ac, rd in referendum_data.items():
-        area_name = area_name_map.get(ac, f'เขต {ac}')
-        province = get_province(area_name)
-        entries = rd.get('entries', [])
-        agree_entry = next((e for e in entries if e['answerCode'] == 'agree'), None)
-        disagree_entry = next((e for e in entries if e['answerCode'] == 'disagree'), None)
-        agree_pct = agree_entry['votePercent'] if agree_entry else 0
-        disagree_pct = disagree_entry['votePercent'] if disagree_entry else 0
-        turnout_pct = rd.get('voteProgressPercent', 0)
-
-        # Match with constituency winner
-        cd = constituency_data.get(ac)
-        mp_winner_code = cd.get('winnerPartyCode', '') if cd else ''
-        mp_top = cd.get('topEntries', []) if cd else []
-        mp_winner_pct = mp_top[0]['votePercent'] if mp_top else 0
-
-        referendum_correlation.append({
-            'areaCode': ac,
-            'areaName': area_name,
-            'province': province,
-            'agreePercent': agree_pct,
-            'disagreePercent': disagree_pct,
-            'turnoutPercent': turnout_pct,
-            'mpWinnerParty': get_party_name(mp_winner_code),
-            'mpWinnerPercent': mp_winner_pct,
-            'winnerPartyColor': get_party_color(mp_winner_code),
-        })
-    referendum_correlation.sort(key=lambda x: x['agreePercent'], reverse=True)
 
     # ═══════════════════════════════════════════════════════════════
     # ── SPOILED BALLOT COMPARISON: MP Election vs Referendum ──
@@ -2623,6 +2866,7 @@ def main():
         'targetPartyCounts': list(target_party_counts.values()),
         'rankDistribution': rank_distribution,
         'provinceSummary': province_summary,
+        'provinceMapData': province_map_data,
         # Deep dive data
         'scatterData': scatter_data,
         'areaDetails': area_details,
@@ -2635,11 +2879,12 @@ def main():
         'retentionSummary': retention_summary,
         'winnerRetention': winner_retention,
         'lost66Winners': lost_66_winners[:50],
+        # Switcher Vote Comparison (66 vs 69 votes)
+        'switcherVoteComparison': switcher_vote_comparison,
         # New analysis tabs
         'turnoutAnomaly': turnout_anomaly,
         'voteSplitting': vote_splitting,
         'winningMargins': winning_margins,
-        'referendumCorrelation': referendum_correlation,
         # Spoiled Ballot Comparison (MP Election vs Referendum)
         'spoiledComparison': spoiled_comparison,
         'spoiledComparisonMeta': spoiled_comparison_meta,

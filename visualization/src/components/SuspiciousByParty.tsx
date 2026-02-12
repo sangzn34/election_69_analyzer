@@ -1,6 +1,7 @@
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
 } from 'recharts'
+import { PieChart as PieChartIcon, CircleDot } from 'lucide-react'
 import type { SuspiciousByPartyItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -49,7 +50,7 @@ export default function SuspiciousByParty({ data, nameToCodeMap }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🥧</span>
+        <PieChartIcon size={20} />
         สัดส่วนเขตน่าสงสัย แยกตามพรรค ส.ส. ผู้ชนะ
       </div>
       <div className="section-desc">
@@ -82,7 +83,7 @@ export default function SuspiciousByParty({ data, nameToCodeMap }: Props) {
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ fontSize: '0.95rem', color: '#e8eaed', marginTop: 8, fontWeight: 600 }}>
-                🔴 น่าสงสัย {party.suspicious} / {party.total} เขต
+                <CircleDot size={14} style={{ color: '#f44853', verticalAlign: -2 }} /> น่าสงสัย {party.suspicious} / {party.total} เขต
                 <span style={{ color: party.color, marginLeft: 8, fontSize: '1.05rem' }}>
                   ({party.total > 0 ? ((party.suspicious / party.total) * 100).toFixed(1) : 0}%)
                 </span>

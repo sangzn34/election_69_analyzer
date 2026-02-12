@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { ArrowLeftRight, BarChart3, Shuffle, Download } from 'lucide-react'
 import type { PartySwitcherFlow, PartySwitcherSummaryItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -51,7 +52,7 @@ export default function PartySwitcher({ flows, summary, nameToCodeMap }: Props) 
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">🔄</span>
+        <ArrowLeftRight size={20} />
         การย้ายพรรค: ผู้สมัครย้ายจากพรรค 2566 → พรรค 2569
       </div>
       <div className="section-desc">
@@ -60,8 +61,8 @@ export default function PartySwitcher({ flows, summary, nameToCodeMap }: Props) 
       </div>
 
       <div className="filter-bar">
-        <button className={`tab ${view === 'summary' ? 'active' : ''}`} onClick={() => setView('summary')}>📊 ภาพรวมพรรครับย้าย</button>
-        <button className={`tab ${view === 'flows' ? 'active' : ''}`} onClick={() => setView('flows')}>🔀 รายละเอียดการย้าย</button>
+        <button className={`tab ${view === 'summary' ? 'active' : ''}`} onClick={() => setView('summary')}><BarChart3 size={14} /> ภาพรวมพรรครับย้าย</button>
+        <button className={`tab ${view === 'flows' ? 'active' : ''}`} onClick={() => setView('flows')}><Shuffle size={14} /> รายละเอียดการย้าย</button>
       </div>
 
       {view === 'summary' && (
@@ -87,7 +88,7 @@ export default function PartySwitcher({ flows, summary, nameToCodeMap }: Props) 
             <div style={{ marginTop: 20 }}>
               <h4 style={{ color: '#e8eaed', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <PartyLogo partyName={selectedParty} nameToCodeMap={nameToCodeMap} size={32} />
-                📥 {selectedParty} รับย้ายมาจาก:
+                <Download size={16} style={{ verticalAlign: -3 }} /> {selectedParty} รับย้ายมาจาก:
               </h4>
               <div className="province-table-container" style={{ maxHeight: 350 }}>
                 <table className="province-table">

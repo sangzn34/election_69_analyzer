@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
-import { Scissors, CheckCircle, ListFilter } from 'lucide-react'
+import { Scissors, CheckCircle, ListFilter, CircleCheck } from 'lucide-react'
 import type { VoteSplittingItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
 
@@ -21,7 +21,7 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
       <div className="item" style={{ color: d.mpWinnerColor }}>ส.ส. เขต: {d.mpWinnerParty} ({d.mpWinnerPercent.toFixed(1)}%)</div>
       <div className="item" style={{ color: d.plWinnerColor }}>PL อันดับ 1: {d.plWinnerParty} ({d.plWinnerPercent.toFixed(1)}%)</div>
       <div className="item" style={{ fontWeight: 700, color: d.isSplit ? '#f44853' : '#5ed88a' }}>
-        {d.isSplit ? `✂️ Vote Split! (ต่างกัน ${diff.toFixed(1)}%)` : '✅ ลงคะแนนพรรคเดียวกัน'}
+        {d.isSplit ? `Vote Split! (ต่างกัน ${diff.toFixed(1)}%)` : 'ลงคะแนนพรรคเดียวกัน'}
       </div>
     </div>
   )
@@ -62,7 +62,7 @@ export default function VoteSplitting({ data, nameToCodeMap }: Props) {
   return (
     <div className="section">
       <div className="section-title">
-        <span className="emoji">✂️</span>
+        <Scissors size={20} />
         Vote Splitting: เขตที่คนเลือก ส.ส. กับ บัญชีรายชื่อ คนละพรรค
       </div>
       <div className="section-desc">
@@ -77,11 +77,11 @@ export default function VoteSplitting({ data, nameToCodeMap }: Props) {
         </div>
         <div className="summary-card">
           <div className="value danger">{stats.split}</div>
-          <div className="label">✂️ เลือกคนละพรรค</div>
+          <div className="label"><Scissors size={14} style={{ verticalAlign: -2 }} /> เลือกคนละพรรค</div>
         </div>
         <div className="summary-card">
           <div className="value success">{stats.same}</div>
-          <div className="label">✅ เลือกพรรคเดียวกัน</div>
+          <div className="label"><CircleCheck size={14} style={{ verticalAlign: -2 }} /> เลือกพรรคเดียวกัน</div>
         </div>
         <div className="summary-card">
           <div className="value danger">{stats.splitPct}%</div>
@@ -138,7 +138,7 @@ export default function VoteSplitting({ data, nameToCodeMap }: Props) {
                   </td>
                   <td>{row.plWinnerPercent.toFixed(1)}%</td>
                   <td style={{ fontWeight: 700, color: diff > 20 ? '#f44853' : '#ff8a4d' }}>{diff.toFixed(1)}%</td>
-                  <td>{row.isSplit ? <span style={{ color: '#f44853' }}>✂️ Split</span> : <span style={{ color: '#5ed88a' }}>✅</span>}</td>
+                  <td>{row.isSplit ? <span style={{ color: '#f44853' }}><Scissors size={12} style={{ verticalAlign: -2 }} /> Split</span> : <span style={{ color: '#5ed88a' }}><CircleCheck size={12} style={{ verticalAlign: -2 }} /></span>}</td>
                 </tr>
               )
             })}
