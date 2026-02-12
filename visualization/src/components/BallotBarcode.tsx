@@ -233,8 +233,8 @@ export default function BallotBarcode() {
               fontSize: 13,
               color: '#94a3b8',
               lineHeight: 1.6,
-              overflowX: 'auto',
-              whiteSpace: 'nowrap',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-all',
             }}>
               <span style={{ color: '#60a5fa' }}>M</span> = ⌊<span style={{ color: '#fbbf24' }}>N</span> / 20⌋ + 1 = {result.formula}
             </div>
@@ -483,7 +483,7 @@ export default function BallotBarcode() {
         </button>
 
         {showMath && (
-          <div style={{ padding: '0 16px 16px', fontSize: 13, lineHeight: 2, color: 'var(--text-secondary)' }}>
+          <div style={{ padding: '0 16px 16px', fontSize: 13, lineHeight: 2, color: 'var(--text-secondary)', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
             <div style={{
               background: '#1e293b',
               borderRadius: 8,
@@ -492,18 +492,20 @@ export default function BallotBarcode() {
               marginBottom: 14,
               fontSize: 14,
               lineHeight: 2,
-              overflowX: 'auto',
+              overflowWrap: 'break-word',
+              wordBreak: 'break-word',
             }}>
               <div style={{ color: '#94a3b8', marginBottom: 4 }}>{'// กำหนดให้'}</div>
-              <div style={{ whiteSpace: 'nowrap' }}><span style={{ color: '#60a5fa' }}>M</span> <span style={{ color: '#94a3b8' }}>=</span> เล่มที่ <span style={{ color: '#94a3b8' }}>(Book ID)</span></div>
-              <div style={{ whiteSpace: 'nowrap' }}><span style={{ color: '#fbbf24' }}>N</span> <span style={{ color: '#94a3b8' }}>=</span> เลขที่บัตร <span style={{ color: '#94a3b8' }}>(Ballot Number จากบาร์โค้ด)</span></div>
+              <div><span style={{ color: '#60a5fa' }}>M</span> <span style={{ color: '#94a3b8' }}>=</span> เล่มที่ <span style={{ color: '#94a3b8' }}>(Book ID)</span></div>
+              <div><span style={{ color: '#fbbf24' }}>N</span> <span style={{ color: '#94a3b8' }}>=</span> เลขที่บัตร</div>
+              <div style={{ color: '#94a3b8', fontSize: 12 }}>&nbsp;&nbsp;&nbsp;&nbsp;(Ballot Number จากบาร์โค้ด)</div>
               <div style={{ marginTop: 8, color: '#94a3b8' }}>{'// สูตร'}</div>
               <div style={{ fontSize: 16, color: '#f0f0f0' }}>
                 <span style={{ color: '#60a5fa' }}>M</span> = ⌊<span style={{ color: '#fbbf24' }}>N</span> / 20⌋ + 1
               </div>
             </div>
 
-            <p style={{ wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
+            <p style={{ overflowWrap: 'break-word' }}>
               <strong style={{ color: 'var(--text-primary)' }}>ทำไม 20?</strong> — กกต. ระบุว่าบัตรเลือกตั้ง 1 เล่ม มี <strong style={{ color: 'var(--accent)' }}>20 ฉบับ</strong>
             </p>
 
@@ -518,11 +520,11 @@ export default function BallotBarcode() {
               background: 'var(--bg-primary)',
               borderRadius: 6,
               padding: '8px 12px',
-              overflowX: 'auto',
-              whiteSpace: 'nowrap',
               marginBottom: 8,
             }}>
-              เล่ม 1 = บัตร 1–20 &nbsp;|&nbsp; เล่ม 2 = บัตร 21–40 &nbsp;|&nbsp; เล่ม 3 = บัตร 41–60 ...
+              เล่ม 1 = บัตร 1–20<br />
+              เล่ม 2 = บัตร 21–40<br />
+              เล่ม 3 = บัตร 41–60 ...
             </div>
 
             <p style={{ overflowWrap: 'break-word' }}>
@@ -533,12 +535,9 @@ export default function BallotBarcode() {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              flexWrap: 'nowrap',
+              flexWrap: 'wrap',
               margin: '8px 0 12px',
               fontSize: 13,
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              paddingBottom: 4,
             }}>
               {[
                 { label: 'บาร์โค้ด', color: 'var(--accent)' },
@@ -574,13 +573,15 @@ export default function BallotBarcode() {
               marginTop: 12,
             }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>💡 ตัวอย่างคำนวณ</div>
-              <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 2, color: '#94a3b8', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <div style={{ whiteSpace: 'nowrap' }}>บาร์โค้ด: <span style={{ color: 'var(--accent)' }}>A03398985</span></div>
-                <div style={{ whiteSpace: 'nowrap' }}>N = 3398985</div>
-                <div style={{ whiteSpace: 'nowrap' }}>M = ⌊3398985 / 20⌋ + 1</div>
-                <div style={{ whiteSpace: 'nowrap' }}>&nbsp; = ⌊169949.25⌋ + 1 = 169949 + 1 = <span style={{ color: '#ef4444', fontWeight: 700 }}>169950</span></div>
-                <div style={{ whiteSpace: 'nowrap' }}>เล่มที่ = <span style={{ color: '#ef4444', fontWeight: 700 }}>A0169950</span></div>
-                <div style={{ whiteSpace: 'nowrap' }}>ลำดับในเล่ม = 3398985 mod 20 = <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>5</span> (ใบที่ 5 จาก 20)</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 2, color: '#94a3b8', overflowWrap: 'break-word', wordBreak: 'break-all' }}>
+                <div>บาร์โค้ด: <span style={{ color: 'var(--accent)' }}>A03398985</span></div>
+                <div>N = 3398985</div>
+                <div>M = ⌊3398985 / 20⌋ + 1</div>
+                <div>&nbsp; = ⌊169949.25⌋ + 1</div>
+                <div>&nbsp; = 169949 + 1 = <span style={{ color: '#ef4444', fontWeight: 700 }}>169950</span></div>
+                <div>เล่มที่ = <span style={{ color: '#ef4444', fontWeight: 700 }}>A0169950</span></div>
+                <div>ลำดับในเล่ม = 3398985 mod 20</div>
+                <div>&nbsp; = <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>5</span> (ใบที่ 5 จาก 20)</div>
               </div>
             </div>
 
@@ -591,10 +592,12 @@ export default function BallotBarcode() {
                 borderRadius: 6,
                 padding: 12,
                 marginTop: 6,
-                overflow: 'auto',
                 fontSize: 12,
                 lineHeight: 1.6,
                 color: '#e2e8f0',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                overflowWrap: 'break-word',
               }}>
 {`function getBallotBookId(ballotId) {
   const prefix = ballotId.slice(0, 1);
