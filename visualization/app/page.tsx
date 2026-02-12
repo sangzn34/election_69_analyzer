@@ -45,7 +45,8 @@ type SectionId =
   | 'candidate' | 'switcher' | 'switcherDetail' | 'switcherVote' | 'retention' | 'party' | 'region'
   | 'province' | 'map' | 'explorer' | 'list'
   | 'turnout' | 'splitting' | 'margin' | 'spoiled'
-  | 'ensemble' | 'mpPl' | 'ballotImbalance' | 'barcode' | 'news'
+  | 'ensemble' | 'mpPl' | 'ballotImbalance'
+  | 'barcode' | 'news'
 
 interface MenuItem {
   id: SectionId
@@ -63,7 +64,8 @@ const ALL_SECTIONS: SectionId[] = [
   'candidate', 'switcher', 'switcherDetail', 'switcherVote', 'retention', 'party', 'region',
   'province', 'map', 'explorer', 'list',
   'turnout', 'splitting', 'margin', 'spoiled',
-  'ensemble', 'mpPl', 'ballotImbalance', 'barcode', 'news',
+  'ensemble', 'mpPl', 'ballotImbalance',
+  'barcode', 'news',
 ]
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/election_69_analyzer'
@@ -143,6 +145,13 @@ export default function HomePage() {
 
   const menuGroups: MenuGroup[] = [
     {
+      title: 'ประเด็นร้อน',
+      items: [
+        { id: 'barcode' as SectionId, label: 'บาร์โค้ดบัตรเลือกตั้ง', emoji: <ScanBarcode size={16} /> },
+        { id: 'news' as SectionId, label: 'ข่าวความผิดปกติ', emoji: <Newspaper size={16} /> },
+      ],
+    },
+    {
       title: 'ภาพรวม',
       items: [
         { id: 'overview' as SectionId, label: 'ภาพรวม', emoji: <BarChart3 size={16} /> },
@@ -154,17 +163,12 @@ export default function HomePage() {
       ],
     },
     {
-      title: 'ตรวจสอบความผิดปกติ',
+      title: 'วิเคราะห์ความผิดปกติ',
       items: [
         ...(data.ensembleAnalysis ? [{ id: 'ensemble' as const, label: 'Ensemble Score', emoji: <FlaskConical size={16} /> }] : []),
         { id: 'scatter' as SectionId, label: 'Scatter Plot', emoji: <Microscope size={16} /> },
         { id: 'anomaly' as SectionId, label: 'Anomaly Score', emoji: <Zap size={16} /> },
         ...(data.turnoutAnomaly ? [{ id: 'turnout' as const, label: 'Turnout ผิดปกติ', emoji: <TrendingDown size={16} /> }] : []),
-      ],
-    },
-    {
-      title: 'เปรียบเทียบ',
-      items: [
         ...(data.mpPlComparison ? [{ id: 'mpPl' as const, label: 'ส.ส.เขต vs บัญชีรายชื่อ', emoji: <Vote size={16} /> }] : []),
         ...(data.ballotImbalance ? [{ id: 'ballotImbalance' as const, label: 'บัตรเขย่ง', emoji: <TriangleAlert size={16} /> }] : []),
         ...(data.voteSplitting ? [{ id: 'splitting' as const, label: 'Vote Splitting', emoji: <Scissors size={16} /> }] : []),
@@ -176,25 +180,18 @@ export default function HomePage() {
       title: 'ข้อมูลผู้สมัคร',
       items: [
         { id: 'candidate' as SectionId, label: 'เบอร์ผู้สมัคร', emoji: <Hash size={16} /> },
+        { id: 'rank' as SectionId, label: 'การกระจายอันดับ', emoji: <TrendingUp size={16} /> },
         { id: 'switcher' as SectionId, label: 'ย้ายพรรค', emoji: <ArrowLeftRight size={16} /> },
         { id: 'switcherDetail' as SectionId, label: 'ส.ส. ย้ายพรรค (รายคน)', emoji: <ArrowRightLeft size={16} /> },
         ...(data.switcherVoteComparison ? [{ id: 'switcherVote' as const, label: 'คะแนน 66 vs 69', emoji: <TrendingUp size={16} /> }] : []),
         { id: 'retention' as SectionId, label: 'ส.ส.66 รักษาที่นั่ง', emoji: <Medal size={16} /> },
-        { id: 'rank' as SectionId, label: 'การกระจายอันดับ', emoji: <TrendingUp size={16} /> },
       ],
     },
     {
-      title: 'ค้นหา',
+      title: 'ค้นหา & สำรวจ',
       items: [
         { id: 'explorer' as SectionId, label: 'เจาะลึกรายเขต', emoji: <Search size={16} /> },
         { id: 'list' as SectionId, label: 'รายชื่อเขต', emoji: <ClipboardList size={16} /> },
-      ],
-    },
-    {
-      title: 'ข่าวสาร',
-      items: [
-        { id: 'barcode' as SectionId, label: 'บาร์โค้ดบัตรเลือกตั้ง', emoji: <ScanBarcode size={16} /> },
-        { id: 'news' as SectionId, label: 'ข่าวความผิดปกติ', emoji: <Newspaper size={16} /> },
       ],
     },
   ].filter(g => g.items.length > 0)
@@ -244,6 +241,9 @@ export default function HomePage() {
 
         {/* Content */}
         <main className="content">
+          {activeSection === 'barcode' && <BallotBarcode />}
+          {activeSection === 'news' && <ElectionNews />}
+
           {activeSection === 'overview' && (
             <>
               <TopBenefitingParties data={data.targetPartyCounts} partyMeta={data.partyMeta} nameToCodeMap={nameToCodeMap} />
@@ -275,8 +275,6 @@ export default function HomePage() {
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
           {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}
-          {activeSection === 'barcode' && <BallotBarcode />}
-          {activeSection === 'news' && <ElectionNews />}
         </main>
       </div>
     </div>

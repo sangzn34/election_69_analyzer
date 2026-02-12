@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef } from 'react'
 import {
   ScanBarcode, ShieldAlert, Calculator, BookOpen, AlertTriangle,
   Check, Copy, ArrowRight, Info, ExternalLink, Hash, Search,
-  ChevronDown, ChevronUp, Scale, Building2,
+  ChevronDown, ChevronUp, Scale, Building2, Gavel,
 } from 'lucide-react'
 
 /* ─── Decode logic ─── */
@@ -48,6 +48,7 @@ export default function BallotBarcode() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [showMath, setShowMath] = useState(false)
   const [showECT, setShowECT] = useState(false)
+  const [showLaw, setShowLaw] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const result = useMemo(() => decodeBallot(input), [input])
@@ -570,6 +571,145 @@ export default function BallotBarcode() {
         )}
       </div>
 
+      {/* ── กฎหมายที่เกี่ยวข้อง (Expandable) ── */}
+      <div style={{
+        background: 'var(--bg-secondary)',
+        borderRadius: 12,
+        border: '1px solid var(--border)',
+        marginBottom: 20,
+        overflow: 'hidden',
+      }}>
+        <button
+          onClick={() => setShowLaw(!showLaw)}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            color: 'var(--text-primary)',
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Gavel size={16} style={{ color: '#eab308' }} /> กฎหมายที่เกี่ยวข้อง — พ.ร.บ.ประกอบ รธน. เลือกตั้ง ส.ส.
+          </span>
+          {showLaw ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {showLaw && (
+          <div style={{ padding: '0 16px 16px', fontSize: 13, lineHeight: 1.8, color: 'var(--text-secondary)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+              บาร์โค้ดที่มีเลขเฉพาะแต่ละใบ สามารถคำนวณย้อนหาเล่มที่ → ต้นขั้ว → ตัวตนผู้ลงคะแนนได้ ซึ่งอาจขัดต่อกฎหมายเลือกตั้งอย่างน้อย <strong style={{ color: '#eab308' }}>3 มาตรา</strong>
+            </div>
+
+            {/* มาตรา 92 */}
+            <div style={{
+              background: '#eab30812',
+              border: '1px solid #eab30833',
+              borderRadius: 10,
+              padding: 14,
+              marginBottom: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{
+                  background: '#eab30822',
+                  color: '#eab308',
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}>
+                  มาตรา 92
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  การลงคะแนน &quot;โดยตรงและลับ&quot;
+                </span>
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+                กำหนดให้การลงคะแนนเลือกตั้งเป็นไปโดย <strong style={{ color: '#eab308' }}>&quot;โดยตรงและลับ&quot;</strong> — หากบาร์โค้ดสามารถสืบย้อนตัวตนผู้ลงคะแนนได้ ย่อมขัดต่อหลัก &quot;ลับ&quot; ที่กฎหมายบัญญัติไว้
+              </div>
+            </div>
+
+            {/* มาตรา 93 */}
+            <div style={{
+              background: '#3b82f612',
+              border: '1px solid #3b82f633',
+              borderRadius: 10,
+              padding: 14,
+              marginBottom: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{
+                  background: '#3b82f622',
+                  color: '#3b82f6',
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}>
+                  มาตรา 93
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  บังคับพับบัตร — ไม่ให้ผู้อื่นทราบว่าลงคะแนนอย่างไร
+                </span>
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+                บังคับให้ <strong style={{ color: '#3b82f6' }}>พับบัตร</strong> ก่อนหย่อนลงหีบ เพื่อไม่ให้ผู้อื่นทราบว่าลงคะแนนอย่างไร — แต่หากบาร์โค้ดด้านนอกบัตรสามารถอ่านได้โดยไม่ต้องเปิดบัตร การพับบัตรก็ไม่ช่วยปกป้องความลับ
+              </div>
+            </div>
+
+            {/* มาตรา 96 */}
+            <div style={{
+              background: '#ef444412',
+              border: '1px solid #ef444433',
+              borderRadius: 10,
+              padding: 14,
+              marginBottom: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{
+                  background: '#ef444422',
+                  color: '#ef4444',
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}>
+                  มาตรา 96
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  ห้ามทำเครื่องหมายที่สังเกตได้บนบัตร
+                </span>
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+                ห้ามทำ <strong style={{ color: '#ef4444' }}>เครื่องหมายที่ทำให้สังเกตได้</strong> บนบัตรเลือกตั้ง — บาร์โค้ดที่มีเลขเฉพาะไม่ซ้ำกันแต่ละใบ ถือเป็นเครื่องหมายที่สามารถแยกแยะบัตรแต่ละใบออกจากกันได้ จึงอาจเข้าข่ายเป็น &quot;เครื่องหมายที่ทำให้สังเกตได้&quot; ตามมาตรานี้
+              </div>
+            </div>
+
+            {/* สรุป */}
+            <div style={{
+              background: 'var(--bg-primary)',
+              borderRadius: 8,
+              padding: 12,
+              border: '1px solid var(--border)',
+              marginTop: 4,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#f97316', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={14} /> ข้อสังเกต
+              </div>
+              <div style={{ fontSize: 12, lineHeight: 1.8 }}>
+                กฎหมายเลือกตั้งออกแบบมาเพื่อปกป้อง <strong style={{ color: 'var(--text-primary)' }}>ความลับของผู้ลงคะแนน</strong> ทั้ง 3 มาตรานี้มุ่งเน้นเรื่องเดียวกัน — ไม่ให้มีทางสืบย้อนได้ว่าใครลงคะแนนให้ใคร หากบาร์โค้ดสามารถย้อนหาตัวตนได้จริง ย่อมเป็นช่องทางที่ขัดต่อเจตนารมณ์ของกฎหมาย
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Summary box ── */}
       <div style={{
         background: 'linear-gradient(135deg, var(--bg-secondary), #1e293b)',
@@ -592,7 +732,7 @@ export default function BallotBarcode() {
               <li>บาร์โค้ดมีเลขเฉพาะแต่ละใบ</li>
               <li>คำนวณย้อนหาเล่มที่ได้</li>
               <li>ต้นขั้วมีลายเซ็นผู้ลงคะแนน</li>
-              <li>อาจขัด รธน. เรื่องเลือกตั้งลับ</li>
+              <li>อาจขัด ม.92, ม.93, ม.96</li>
             </ul>
           </div>
           <div style={{
