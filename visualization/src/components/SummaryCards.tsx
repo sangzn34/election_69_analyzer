@@ -1,3 +1,5 @@
+'use client'
+
 import type { Summary } from '../types'
 
 interface Props {

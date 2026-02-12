@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { MapContainer, GeoJSON, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -40,7 +42,8 @@ export default function ProvinceMap({ data }: Props) {
   const DEFAULT_ZOOM = 6
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}thailand-provinces.json`)
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/election_69_analyzer'
+    fetch(`${basePath}/thailand-provinces.json`)
       .then(r => r.json())
       .then((d: GeoJSONData) => setGeoData(d))
       .catch(err => console.error('Failed to load GeoJSON:', err))

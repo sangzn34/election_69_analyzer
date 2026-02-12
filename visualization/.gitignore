@@ -1,14 +1,10 @@
 node_modules
 .DS_Store
 dist
-dist-ssr
+out
+.next
 *.local
-count.txt
 .env
 .env.*
 !.env.example
-.nitro
-.tanstack
-.wrangler
-stats.html
 .vercel

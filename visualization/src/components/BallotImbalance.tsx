@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -34,10 +36,12 @@ type TabMode = 'overview' | 'areas' | 'province'
 
 /* ─── URL helpers ─── */
 function getParamFromURL(key: string): string | null {
+  if (typeof window === 'undefined') return null
   return new URLSearchParams(window.location.search).get(key)
 }
 
 function buildShareURL(params: Record<string, string>): string {
+  if (typeof window === 'undefined') return ''
   const url = new URL(window.location.href)
   url.searchParams.set('section', 'ballotImbalance')
   for (const [k, v] of Object.entries(params)) {
@@ -51,6 +55,7 @@ function buildShareURL(params: Record<string, string>): string {
 }
 
 function syncURL(params: Record<string, string>) {
+  if (typeof window === 'undefined') return
   const url = buildShareURL(params)
   window.history.replaceState(null, '', url)
 }

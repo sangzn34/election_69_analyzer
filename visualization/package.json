@@ -1,12 +1,12 @@
 {
   "name": "election-69-viz",
   "private": true,
-  "version": "1.0.0",
-  "type": "module",
+  "version": "2.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "prepare-data": "python3 scripts/prepare_data.py"
   },
   "dependencies": {
@@ -14,16 +14,16 @@
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
+    "next": "^15.3.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
     "recharts": "^2.15.0"
   },
   "devDependencies": {
+    "@types/node": "25.2.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.3.0",
-    "typescript": "^5.9.3",
-    "vite": "^6.0.0"
+    "typescript": "^5.9.3"
   }
 }

@@ -1,6 +1,7 @@
 import type { PartyMetaMap, NameToCodeMap } from '../types'
 
-const LOGO_BASE = `${import.meta.env.BASE_URL}party-logos`
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/election_69_analyzer'
+const LOGO_BASE = `${BASE_PATH}/party-logos`
 
 /**
  * Get party logo URL from party code (e.g. "PARTY-0046")

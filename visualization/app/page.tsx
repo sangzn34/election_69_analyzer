@@ -1,5 +1,8 @@
+'use client'
+
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import type { ElectionData, NameToCodeMap } from './types'
+import dynamic from 'next/dynamic'
+import type { ElectionData, NameToCodeMap } from '../src/types'
 import {
   BarChart3, Target, PieChart, Globe, MapPin, Map,
   TrendingUp, Microscope, Zap, Hash, Search, ClipboardList,
@@ -7,32 +10,34 @@ import {
   Flag, Vote, TriangleAlert, FileWarning, XCircle, ChevronUp, ChevronDown, X, Menu,
   Newspaper,
 } from 'lucide-react'
-import SummaryCards from './components/SummaryCards'
-import TopBenefitingParties from './components/TopBenefitingParties'
-import RankDistribution from './components/RankDistribution'
-import SuspiciousByParty from './components/SuspiciousByParty'
-import ProvinceBreakdown from './components/ProvinceBreakdown'
-import SuspiciousAreaList from './components/SuspiciousAreaList'
-import ScatterAnalysis from './components/ScatterAnalysis'
-import CandidateNumbers from './components/CandidateNumbers'
-import RegionBreakdown from './components/RegionBreakdown'
-import VoteAnomaly from './components/VoteAnomaly'
-import AreaExplorer from './components/AreaExplorer'
-import PartySwitcher from './components/PartySwitcher'
-import PartySwitcherDetail from './components/PartySwitcherDetail'
-import WinnerRetention from './components/WinnerRetention'
-import TurnoutAnomaly from './components/TurnoutAnomaly'
-import VoteSplitting from './components/VoteSplitting'
-import WinningMargin from './components/WinningMargin'
-import SpoiledComparison from './components/SpoiledComparison'
-import EnsembleAnalysis from './components/EnsembleAnalysis'
-import ProvinceMap from './components/ProvinceMap'
-import SwitcherVoteComparison from './components/SwitcherVoteComparison'
-import MpPlComparison from './components/MpPlComparison'
-import BallotImbalance from './components/BallotImbalance'
-import ElectionNews from './components/ElectionNews'
-import { ScrollArea } from './components/ui/ScrollArea'
-import { buildPartyNameToCode } from './utils/partyLogo'
+import SummaryCards from '../src/components/SummaryCards'
+import TopBenefitingParties from '../src/components/TopBenefitingParties'
+import RankDistribution from '../src/components/RankDistribution'
+import SuspiciousByParty from '../src/components/SuspiciousByParty'
+import ProvinceBreakdown from '../src/components/ProvinceBreakdown'
+import SuspiciousAreaList from '../src/components/SuspiciousAreaList'
+import ScatterAnalysis from '../src/components/ScatterAnalysis'
+import CandidateNumbers from '../src/components/CandidateNumbers'
+import RegionBreakdown from '../src/components/RegionBreakdown'
+import VoteAnomaly from '../src/components/VoteAnomaly'
+import AreaExplorer from '../src/components/AreaExplorer'
+import PartySwitcher from '../src/components/PartySwitcher'
+import PartySwitcherDetail from '../src/components/PartySwitcherDetail'
+import WinnerRetention from '../src/components/WinnerRetention'
+import TurnoutAnomaly from '../src/components/TurnoutAnomaly'
+import VoteSplitting from '../src/components/VoteSplitting'
+import WinningMargin from '../src/components/WinningMargin'
+import SpoiledComparison from '../src/components/SpoiledComparison'
+import EnsembleAnalysis from '../src/components/EnsembleAnalysis'
+import SwitcherVoteComparison from '../src/components/SwitcherVoteComparison'
+import MpPlComparison from '../src/components/MpPlComparison'
+import BallotImbalance from '../src/components/BallotImbalance'
+import ElectionNews from '../src/components/ElectionNews'
+import { ScrollArea } from '../src/components/ui/ScrollArea'
+import { buildPartyNameToCode } from '../src/utils/partyLogo'
+
+/* Leaflet accesses `window` at import time — must be loaded only on the client */
+const ProvinceMap = dynamic(() => import('../src/components/ProvinceMap'), { ssr: false })
 
 type SectionId =
   | 'overview' | 'benefiting' | 'rank' | 'scatter' | 'anomaly'
@@ -60,18 +65,26 @@ const ALL_SECTIONS: SectionId[] = [
   'ensemble', 'mpPl', 'ballotImbalance', 'news',
 ]
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/election_69_analyzer'
+
 function getSectionFromURL(): SectionId {
+  if (typeof window === 'undefined') return 'overview'
   const params = new URLSearchParams(window.location.search)
   const s = params.get('section')
   if (s && ALL_SECTIONS.includes(s as SectionId)) return s as SectionId
   return 'overview'
 }
 
-function App() {
+export default function HomePage() {
   const [data, setData] = useState<ElectionData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeSection, setActiveSection] = useState<SectionId>(getSectionFromURL)
+  const [activeSection, setActiveSection] = useState<SectionId>('overview')
   const [menuOpen, setMenuOpen] = useState(false)
+
+  /* Read URL on mount */
+  useEffect(() => {
+    setActiveSection(getSectionFromURL())
+  }, [])
 
   /* Sync URL → state on popstate (browser back/forward) */
   useEffect(() => {
@@ -81,7 +94,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}election_data.json`)
+    fetch(`${BASE_PATH}/election_data.json`)
       .then(res => res.json())
       .then((d: ElectionData) => {
         setData(d)
@@ -190,9 +203,9 @@ function App() {
     <div className="app">
       <header className="header">
         <h1><Vote size={28} style={{ verticalAlign: -4 }} /> วิเคราะห์ทฤษฎีการซื้อเสียง เลือกตั้ง 2569</h1>
-        <p>ทฤษฎี "กาเบอร์เดียวกันทั้ง 2 ใบ" — การวิเคราะห์ความสัมพันธ์ระหว่างเบอร์ ส.ส. เขต กับ คะแนนบัญชีรายชื่อ</p>
+        <p>ทฤษฎี &quot;กาเบอร์เดียวกันทั้ง 2 ใบ&quot; — การวิเคราะห์ความสัมพันธ์ระหว่างเบอร์ ส.ส. เขต กับ คะแนนบัญชีรายชื่อ</p>
         <div className="disclaimer">
-          <TriangleAlert size={14} style={{ verticalAlign: -2 }} /> ข้อมูลนี้เป็นการวิเคราะห์ทางสถิติเท่านั้น ใช้คำว่า "น่าสงสัย" ไม่ได้ตัดสินว่ามีการซื้อเสียงจริง
+          <TriangleAlert size={14} style={{ verticalAlign: -2 }} /> ข้อมูลนี้เป็นการวิเคราะห์ทางสถิติเท่านั้น ใช้คำว่า &quot;น่าสงสัย&quot; ไม่ได้ตัดสินว่ามีการซื้อเสียงจริง
         </div>
       </header>
 
@@ -266,5 +279,3 @@ function App() {
     </div>
   )
 }
-
-export default App

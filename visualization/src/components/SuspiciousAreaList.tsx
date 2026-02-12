@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useMemo } from 'react'
 import { ClipboardList } from 'lucide-react'
 import type { VoteBuyingItem, NameToCodeMap } from '../types'

@@ -1,3 +1,5 @@
+'use client'
+
 import type { NameToCodeMap } from '../types'
 import { getPartyLogoUrl, getLogoUrlByName } from '../utils/partyLogo'
 

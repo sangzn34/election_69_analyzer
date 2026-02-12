@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useMemo } from 'react'
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
