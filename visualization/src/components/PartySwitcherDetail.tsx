@@ -281,7 +281,13 @@ export default function PartySwitcherDetail({ winnerRetention, areaDetails, name
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} label={({ name, value }) => `${name.split(' ')[0]} ${value}`} labelLine={false}>
                 {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Pie>
-              <Tooltip formatter={(value: number, name: string) => [`${value} คน`, name]} />
+              <Tooltip
+                contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, color: '#e0e0e0' }}
+                wrapperStyle={{ outline: 'none' }}
+                labelStyle={{ color: '#e8eaed' }}
+                itemStyle={{ color: '#9aa0a6' }}
+                formatter={(value: number, name: string) => [`${value} คน`, name]}
+              />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', gap: 16, fontSize: 11, marginTop: 4 }}>

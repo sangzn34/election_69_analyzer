@@ -233,7 +233,9 @@ export default function MpPlComparison({ data, nameToCodeMap }: Props) {
                 <YAxis type="category" dataKey="name" width={100} tick={{ fill: '#9aa0a6', fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ fontWeight: 700, marginBottom: 4 }}
+                  wrapperStyle={{ outline: 'none' }}
+                  labelStyle={{ color: '#e8eaed', fontWeight: 700, marginBottom: 4 }}
+                  itemStyle={{ color: '#9aa0a6' }}
                   formatter={(value: number, name: string) => [fmt(value), name === 'mpVotes' ? 'ส.ส. เขต' : 'บัญชีรายชื่อ']}
                   labelFormatter={(label: string, payload: Array<{ payload?: { fullName?: string } }>) => payload?.[0]?.payload?.fullName ?? label}
                 />
@@ -272,6 +274,9 @@ export default function MpPlComparison({ data, nameToCodeMap }: Props) {
                 <YAxis type="category" dataKey="name" width={110} tick={{ fill: '#9aa0a6', fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8, fontSize: 12 }}
+                  wrapperStyle={{ outline: 'none' }}
+                  labelStyle={{ color: '#e8eaed', fontWeight: 600 }}
+                  itemStyle={{ color: '#9aa0a6' }}
                   formatter={(value: number) => [fmtDiff(value) + ' เสียง', 'ส่วนต่าง PL − MP']}
                   labelFormatter={(label: string, payload: Array<{ payload?: { fullName?: string } }>) => payload?.[0]?.payload?.fullName ?? label}
                 />

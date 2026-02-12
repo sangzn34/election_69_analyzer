@@ -306,6 +306,9 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
                 <YAxis stroke="#aaa" fontSize={12} tick={{ fill: '#ccc' }} />
                 <Tooltip
                   contentStyle={{ background: '#1e2130', border: '1px solid #3d4168', borderRadius: 8, fontSize: 13, color: '#e0e0e0' }}
+                  wrapperStyle={{ outline: 'none' }}
+                  labelStyle={{ color: '#e8eaed', fontWeight: 600 }}
+                  itemStyle={{ color: '#9aa0a6' }}
                   formatter={(value: number) => [`${value} เขต`, 'จำนวน']}
                   labelFormatter={(label: string) => `ส่วนต่าง ${label}`}
                 />
@@ -353,6 +356,9 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
                 <ZAxis type="number" dataKey="z" range={[30, 100]} />
                 <Tooltip
                   contentStyle={{ background: '#1e2130', border: '1px solid #3d4168', borderRadius: 8, fontSize: 13, color: '#e0e0e0' }}
+                  wrapperStyle={{ outline: 'none' }}
+                  labelStyle={{ color: '#e8eaed', fontWeight: 600 }}
+                  itemStyle={{ color: '#9aa0a6' }}
                   formatter={(value: number, name: string) => [fmt(value), name]}
                   labelFormatter={(_: unknown, payload: Array<{ payload?: { name?: string; diffPct?: number } }>) => {
                     const p = payload?.[0]?.payload
@@ -396,6 +402,9 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
                     <YAxis type="category" dataKey="name" width={140} tick={{ fill: '#e0e0e0', fontSize: 12, fontWeight: 500 }} />
                     <Tooltip
                       contentStyle={{ background: '#1e2130', border: '1px solid #3d4168', borderRadius: 8, fontSize: 13, color: '#e0e0e0' }}
+                      wrapperStyle={{ outline: 'none' }}
+                      labelStyle={{ color: '#e8eaed', fontWeight: 600 }}
+                      itemStyle={{ color: '#9aa0a6' }}
                       formatter={(value: number) => [`${fmtPct(value)}`, 'ส่วนต่าง %']}
                       labelFormatter={(_: string, payload: Array<{ payload?: { fullName?: string; diff?: number } }>) => {
                         const p = payload?.[0]?.payload

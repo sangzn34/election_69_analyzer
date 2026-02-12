@@ -103,7 +103,7 @@ export default function VoteSplitting({ data, nameToCodeMap }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
             <XAxis type="number" tick={{ fill: '#9aa0a6', fontSize: 12 }} />
             <YAxis dataKey="party" type="category" tick={{ fill: '#e8eaed', fontSize: 12 }} width={110} />
-            <Tooltip contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8 }} />
+            <Tooltip contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8 }} wrapperStyle={{ outline: 'none' }} labelStyle={{ color: '#e8eaed', fontWeight: 600 }} itemStyle={{ color: '#9aa0a6' }} />
             <Legend formatter={(v: string) => <span style={{ color: '#e8eaed', fontSize: 12 }}>{v}</span>} />
             <Bar dataKey="split" name="Vote Split" stackId="a" fill="#f44853" />
             <Bar dataKey="total" name="ทั้งหมด" radius={[0, 4, 4, 0]}>

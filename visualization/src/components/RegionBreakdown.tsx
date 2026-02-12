@@ -98,7 +98,7 @@ export default function RegionBreakdown({ data, nameToCodeMap }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke="#2d3148" />
               <XAxis dataKey="region" tick={{ fill: '#e8eaed', fontSize: 13 }} />
               <YAxis tick={{ fill: '#9aa0a6', fontSize: 12 }} />
-              <Tooltip contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8 }} labelStyle={{ color: '#e8eaed', fontWeight: 600 }} itemStyle={{ fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: '#1e2130', border: '1px solid #2d3148', borderRadius: 8 }} wrapperStyle={{ outline: 'none' }} labelStyle={{ color: '#e8eaed', fontWeight: 600 }} itemStyle={{ color: '#9aa0a6', fontSize: 12 }} />
               <Legend formatter={(value: string) => <span style={{ color: '#e8eaed', fontSize: 11 }}>{value}</span>} />
               {partyData.parties.map(p => <Bar key={p.name} dataKey={p.name} stackId="a" fill={p.color} />)}
             </BarChart>

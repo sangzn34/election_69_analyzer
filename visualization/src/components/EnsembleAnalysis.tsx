@@ -404,7 +404,12 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                     <Cell key={i} fill={e.fill} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{ background: '#1a1a2e', border: '1px solid #333', color: '#e0e0e0' }}
+                  wrapperStyle={{ outline: 'none' }}
+                  labelStyle={{ color: '#e8eaed' }}
+                  itemStyle={{ color: '#9aa0a6' }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -740,7 +745,12 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                     stroke={r.color} fill={r.color} fillOpacity={0.15} strokeWidth={2}
                   />
                 ))}
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{ background: '#1a1a2e', border: '1px solid #333', color: '#e0e0e0' }}
+                  wrapperStyle={{ outline: 'none' }}
+                  labelStyle={{ color: '#e8eaed' }}
+                  itemStyle={{ color: '#9aa0a6' }}
+                />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -881,7 +891,10 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                     <XAxis dataKey="digit" stroke="#888" label={{ value: 'First Digit', position: 'insideBottom', offset: -10, fill: '#888' }} />
                     <YAxis stroke="#888" label={{ value: '%', angle: -90, position: 'insideLeft', fill: '#888' }} />
                     <Tooltip
-                      contentStyle={{ background: '#1a1a2e', border: '1px solid #333' }}
+                      contentStyle={{ background: '#1a1a2e', border: '1px solid #333', color: '#e0e0e0' }}
+                      wrapperStyle={{ outline: 'none' }}
+                      labelStyle={{ color: '#e8eaed' }}
+                      itemStyle={{ color: '#9aa0a6' }}
                       formatter={(value: number, name: string) => [
                         `${value.toFixed(2)}%`,
                         name === 'expected' ? "Benford's Expected" : 'Observed',
@@ -1195,7 +1208,10 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
                     label={{ value: 'Count', angle: -90, position: 'insideLeft', fill: '#888' }}
                   />
                   <Tooltip
-                    contentStyle={{ background: '#1a1a2e', border: '1px solid #333', fontSize: 12 }}
+                    contentStyle={{ background: '#1a1a2e', border: '1px solid #333', fontSize: 12, color: '#e0e0e0' }}
+                    wrapperStyle={{ outline: 'none' }}
+                    labelStyle={{ color: '#e8eaed' }}
+                    itemStyle={{ color: '#9aa0a6' }}
                     formatter={(value: number, name: string) => {
                       if (name === 'count') return [value, 'Iterations']
                       return [value, name]
