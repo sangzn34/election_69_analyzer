@@ -201,8 +201,8 @@ export default function HomePage() {
   return (
     <div className="app">
       <header className="header">
-        <h1><Vote size={28} style={{ verticalAlign: -4 }} /> วิเคราะห์ทฤษฎีการซื้อเสียง เลือกตั้ง 2569</h1>
-        <p>ทฤษฎี &quot;กาเบอร์เดียวกันทั้ง 2 ใบ&quot; — การวิเคราะห์ความสัมพันธ์ระหว่างเบอร์ ส.ส. เขต กับ คะแนนบัญชีรายชื่อ</p>
+        <h1><Vote size={28} style={{ verticalAlign: -4 }} /> วิเคราะห์ผลเลือกตั้ง 2569 — ความผิดปกติทางสถิติ</h1>
+        <p>วิเคราะห์ความสัมพันธ์ระหว่างเบอร์ ส.ส. เขต กับ คะแนนบัญชีรายชื่อ ถอดรหัสบาร์โค้ดบัตร และข้อมูลเชิงลึก</p>
         <div className="disclaimer">
           <TriangleAlert size={14} style={{ verticalAlign: -2 }} /> ข้อมูลนี้เป็นการวิเคราะห์ทางสถิติเท่านั้น ใช้คำว่า &quot;น่าสงสัย&quot; ไม่ได้ตัดสินว่ามีการซื้อเสียงจริง
         </div>
