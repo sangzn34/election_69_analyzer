@@ -345,7 +345,8 @@ def scrape_thairath_article(url, source_name="ไทยรัฐ"):
 
     # Fallback: look for visible date text
     if not date_str:
-        for el in soup.find_all(string=re.compile(r"\d{1,2}\s+ก\.พ\.\s+\d{4}")):
+        thai_month_pattern = r"\d{1,2}\s+(?:ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.)\s+\d{4}"
+        for el in soup.find_all(string=re.compile(thai_month_pattern)):
             text = el.strip()
             date_str = thai_date_to_standard(text)
             time_str = extract_time(text) or ""
