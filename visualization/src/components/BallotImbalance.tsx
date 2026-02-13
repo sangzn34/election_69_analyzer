@@ -509,19 +509,19 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
           </div>
 
           {/* Table */}
-          <div style={{ maxHeight: 600, overflowY: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-            <table className="province-table">
+          <div style={{ maxHeight: 600, overflowY: 'auto', overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <table className="province-table" style={{ minWidth: 780 }}>
               <thead>
                 <tr>
-                  <th>เขต</th>
-                  <th style={{ textAlign: 'right' }}>MP รวม</th>
-                  <th style={{ textAlign: 'right' }}>PL รวม</th>
-                  <th style={{ textAlign: 'right' }}>ส่วนต่าง</th>
-                  <th style={{ textAlign: 'right' }}>Δ%</th>
-                  <th style={{ textAlign: 'center' }}>z</th>
-                  <th>ชนะ</th>
-                  <th style={{ width: 100 }}>เทียบ</th>
-                  <th style={{ width: 40 }}></th>
+                  <th style={{ zIndex: 3 }}>เขต</th>
+                  <th style={{ textAlign: 'right', zIndex: 3 }}>MP รวม</th>
+                  <th style={{ textAlign: 'right', zIndex: 3 }}>PL รวม</th>
+                  <th style={{ textAlign: 'right', zIndex: 3 }}>ส่วนต่าง</th>
+                  <th style={{ textAlign: 'right', zIndex: 3 }}>Δ%</th>
+                  <th style={{ textAlign: 'center', zIndex: 3 }}>z</th>
+                  <th style={{ zIndex: 3 }}>ชนะ</th>
+                  <th style={{ width: 110, minWidth: 110, zIndex: 3 }}>เทียบ</th>
+                  <th style={{ width: 40, zIndex: 3 }}></th>
                 </tr>
               </thead>
               <tbody>
