@@ -4,10 +4,13 @@ import { useState, useMemo, useCallback, useRef } from 'react'
 import {
   ScanBarcode, ShieldAlert, Calculator, BookOpen, AlertTriangle,
   Check, Copy, ArrowRight, Info, ExternalLink, Hash, Search,
-  ChevronDown, ChevronUp, Scale, Building2, Gavel,
+  ChevronDown, ChevronUp, Scale, Building2, Gavel, QrCode,
 } from 'lucide-react'
 
-/* ─── Decode logic ─── */
+/* ─── Ballot type ─── */
+type BallotType = 'pink' | 'green'
+
+/* ─── Pink ballot decode logic (บัตรบัญชีรายชื่อ / Party List) ─── */
 function decodeBallot(ballotId: string) {
   const cleaned = ballotId.trim().toUpperCase()
   if (!cleaned) return null
@@ -33,6 +36,77 @@ function decodeBallot(ballotId: string) {
   }
 }
 
+/* ─── Green ballot QR decode logic (บัตร ส.ส. แบ่งเขต / Constituency) ─── */
+/* Algorithm from verify.election.in.th by @killernay */
+const GREEN_BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const GREEN_QR_LEN = 5
+const GREEN_MOD_SERIAL = 100_000_000
+const GREEN_K_MULTIPLIER = 32_216_237
+const GREEN_K_OFFSET = 42_413_113
+const GREEN_MAX_N = Math.pow(36, 5) // 60,466,176
+
+function greenGetK(charIndex: number) {
+  return (GREEN_K_MULTIPLIER * charIndex + GREEN_K_OFFSET) % GREEN_MOD_SERIAL
+}
+
+function greenDecode(qrCode: string): { serial: string; qr: string; n: number; i: number; k: number } | null {
+  const cleaned = qrCode.trim().toUpperCase()
+  if (cleaned.length !== GREEN_QR_LEN) return null
+  // Must be valid Base36
+  if (!/^[0-9A-Z]{5}$/.test(cleaned)) return null
+
+  const n = parseInt(cleaned, 36)
+  const i = GREEN_BASE36.indexOf(cleaned[1])
+  const k = greenGetK(i)
+  const serial = (n + k) % GREEN_MOD_SERIAL
+  const serialStr = 'B' + String(serial).padStart(8, '0')
+
+  return { serial: serialStr, qr: cleaned, n, i, k }
+}
+
+function greenEncode(serialInput: string): string | null {
+  let s = serialInput.trim().toUpperCase()
+  if (s.startsWith('B')) s = s.slice(1)
+  if (!/^\d+$/.test(s)) return null
+  const serial = parseInt(s.padStart(8, '0'), 10)
+
+  for (let mult = 0; mult < 3; mult++) {
+    const x = serial + mult * GREEN_MOD_SERIAL
+    for (let ci = 0; ci < 36; ci++) {
+      const k = greenGetK(ci)
+      const n = x - k
+      if (n >= 0 && n < GREEN_MAX_N) {
+        let result = ''
+        let val = n
+        for (let j = 0; j < GREEN_QR_LEN; j++) {
+          result = GREEN_BASE36[val % 36] + result
+          val = Math.floor(val / 36)
+        }
+        if (GREEN_BASE36.indexOf(result[1]) === ci) return result
+      }
+    }
+  }
+  return null
+}
+
+/* Green ballot also has books of 20 */
+function greenDecodeWithBook(qrCode: string) {
+  const decoded = greenDecode(qrCode)
+  if (!decoded) return null
+
+  const numericSerial = parseInt(decoded.serial.slice(1), 10) // strip 'B'
+  const bookNum = Math.floor(numericSerial / 20) + 1
+  const posInBook = (numericSerial % 20) || 20
+
+  return {
+    ...decoded,
+    bookNum,
+    bookId: 'B' + String(bookNum).padStart(7, '0'),
+    posInBook,
+    formula: `⌊${numericSerial} / 20⌋ + 1 = ${bookNum}`,
+  }
+}
+
 /* ─── PPTV evidence data ─── */
 const PPTV_EVIDENCE = [
   { ballot: 'A37805049', party: 'พรรคเพื่อไทย', color: '#e74c3c' },
@@ -43,24 +117,50 @@ const PPTV_EVIDENCE = [
 
 /* ─── Component ─── */
 export default function BallotBarcode() {
+  const [ballotType, setBallotType] = useState<BallotType>('pink')
   const [input, setInput] = useState('')
-  const [history, setHistory] = useState<{ input: string; bookId: string; pos: number; formula: string }[]>([])
+  const [greenInput, setGreenInput] = useState('')
+  const [greenMode, setGreenMode] = useState<'decode' | 'encode'>('decode')
+  const [history, setHistory] = useState<{ input: string; bookId: string; pos: number; formula: string; type: BallotType }[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [showMath, setShowMath] = useState(false)
   const [showECT, setShowECT] = useState(false)
   const [showLaw, setShowLaw] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const greenInputRef = useRef<HTMLInputElement>(null)
 
+  /* Pink ballot result */
   const result = useMemo(() => decodeBallot(input), [input])
 
+  /* Green ballot result */
+  const greenResult = useMemo(() => {
+    if (greenMode === 'decode') {
+      return greenDecodeWithBook(greenInput)
+    } else {
+      // Encode mode: serial → QR
+      const qr = greenEncode(greenInput)
+      if (!qr) return null
+      // Then decode to verify and show book info
+      return greenDecodeWithBook(qr)
+    }
+  }, [greenInput, greenMode])
+
   const handleDecode = useCallback(() => {
-    if (!result) return
-    // Add to history (avoid duplicates)
-    setHistory(prev => {
-      if (prev.some(h => h.input === result.input)) return prev
-      return [{ input: result.input, bookId: result.bookId, pos: result.posInBook, formula: result.formula }, ...prev].slice(0, 20)
-    })
-  }, [result])
+    if (ballotType === 'pink') {
+      if (!result) return
+      setHistory(prev => {
+        if (prev.some(h => h.input === result.input && h.type === 'pink')) return prev
+        return [{ input: result.input, bookId: result.bookId, pos: result.posInBook, formula: result.formula, type: 'pink' as BallotType }, ...prev].slice(0, 20)
+      })
+    } else {
+      if (!greenResult) return
+      const label = greenMode === 'decode' ? `QR:${greenInput.toUpperCase()}→${greenResult.serial}` : `${greenResult.serial}→QR:${greenResult.qr}`
+      setHistory(prev => {
+        if (prev.some(h => h.input === label && h.type === 'green')) return prev
+        return [{ input: label, bookId: greenResult.bookId, pos: greenResult.posInBook, formula: greenResult.formula, type: 'green' as BallotType }, ...prev].slice(0, 20)
+      })
+    }
+  }, [ballotType, result, greenResult, greenInput, greenMode])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleDecode()
@@ -75,11 +175,12 @@ export default function BallotBarcode() {
 
   const handlePPTVExample = useCallback((barcode: string) => {
     setInput(barcode)
+    setBallotType('pink')
     const r = decodeBallot(barcode)
     if (r) {
       setHistory(prev => {
-        if (prev.some(h => h.input === r.input)) return prev
-        return [{ input: r.input, bookId: r.bookId, pos: r.posInBook, formula: r.formula }, ...prev].slice(0, 20)
+        if (prev.some(h => h.input === r.input && h.type === 'pink')) return prev
+        return [{ input: r.input, bookId: r.bookId, pos: r.posInBook, formula: r.formula, type: 'pink' as BallotType }, ...prev].slice(0, 20)
       })
     }
   }, [])
@@ -117,17 +218,78 @@ export default function BallotBarcode() {
         </div>
       </div>
 
+      {/* ── Ballot Type Toggle ── */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        marginBottom: 20,
+        background: 'var(--bg-secondary)',
+        borderRadius: 12,
+        padding: 6,
+        border: '1px solid var(--border)',
+      }}>
+        <button
+          onClick={() => setBallotType('pink')}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            background: ballotType === 'pink' ? 'linear-gradient(135deg, #ec489922, #f472b622)' : 'transparent',
+            color: ballotType === 'pink' ? '#f472b6' : 'var(--text-secondary)',
+            outline: ballotType === 'pink' ? '2px solid #f472b644' : 'none',
+            transition: 'all 0.2s',
+          }}
+        >
+          <ScanBarcode size={16} />
+          <span>บัญชีรายชื่อ (บัตรชมพู)</span>
+        </button>
+        <button
+          onClick={() => setBallotType('green')}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: 8,
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            background: ballotType === 'green' ? 'linear-gradient(135deg, #16a34a22, #22c55e22)' : 'transparent',
+            color: ballotType === 'green' ? '#22c55e' : 'var(--text-secondary)',
+            outline: ballotType === 'green' ? '2px solid #22c55e44' : 'none',
+            transition: 'all 0.2s',
+          }}
+        >
+          <QrCode size={16} />
+          <span>ส.ส. แบ่งเขต (บัตรเขียว)</span>
+        </button>
+      </div>
+
       {/* ── Decoder Form ── */}
       <div style={{
         background: 'var(--bg-secondary)',
         borderRadius: 12,
         padding: 20,
-        border: '1px solid var(--border)',
+        border: `1px solid ${ballotType === 'green' ? '#22c55e33' : 'var(--border)'}`,
         marginBottom: 20,
       }}>
+
+      {/* ── Pink Ballot Decoder ── */}
+      {ballotType === 'pink' && (<>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Calculator size={18} style={{ color: 'var(--accent)' }} />
-          ถอดรหัส: เลขที่บัตร → เล่มที่
+          <Calculator size={18} style={{ color: '#f472b6' }} />
+          ถอดรหัส: เลขที่บัตร → เล่มที่ <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>(บัตรชมพู)</span>
         </h3>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -263,6 +425,181 @@ export default function BallotBarcode() {
             </button>
           ))}
         </div>
+      </>)}
+
+      {/* ── Green Ballot Decoder ── */}
+      {ballotType === 'green' && (<>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <QrCode size={18} style={{ color: '#22c55e' }} />
+          ถอดรหัส QR Code บัตร ส.ส. แบ่งเขต <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>(บัตรเขียว)</span>
+        </h3>
+
+        {/* Mode toggle: Decode / Encode */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <button
+            onClick={() => { setGreenMode('decode'); setGreenInput('') }}
+            style={{
+              padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: greenMode === 'decode' ? '#22c55e22' : 'transparent',
+              border: `1px solid ${greenMode === 'decode' ? '#22c55e' : 'var(--border)'}`,
+              color: greenMode === 'decode' ? '#22c55e' : 'var(--text-secondary)',
+            }}
+          >
+            🔓 Decode (QR → เลขที่บัตร)
+          </button>
+          <button
+            onClick={() => { setGreenMode('encode'); setGreenInput('') }}
+            style={{
+              padding: '5px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: greenMode === 'encode' ? '#22c55e22' : 'transparent',
+              border: `1px solid ${greenMode === 'encode' ? '#22c55e' : 'var(--border)'}`,
+              color: greenMode === 'encode' ? '#22c55e' : 'var(--text-secondary)',
+            }}
+          >
+            🔑 Encode (เลขที่บัตร → QR)
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 260px' }}>
+            {greenMode === 'decode'
+              ? <QrCode size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#22c55e' }} />
+              : <Hash size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#22c55e' }} />
+            }
+            <input
+              ref={greenInputRef}
+              type="text"
+              value={greenInput}
+              onChange={e => setGreenInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={greenMode === 'decode' ? 'กรอก QR Code 5 ตัวอักษร เช่น K7W9D' : 'กรอกเลขที่บัตร เช่น B12345678'}
+              style={{
+                width: '100%',
+                padding: '10px 12px 10px 34px',
+                borderRadius: 8,
+                border: '1px solid #22c55e44',
+                background: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+                fontSize: 15,
+                fontFamily: 'monospace',
+                outline: 'none',
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+              }}
+            />
+          </div>
+          <button
+            onClick={handleDecode}
+            disabled={!greenResult}
+            style={{
+              padding: '10px 20px',
+              borderRadius: 8,
+              background: greenResult ? '#22c55e' : 'var(--bg-primary)',
+              color: greenResult ? '#fff' : 'var(--text-secondary)',
+              border: `1px solid ${greenResult ? '#22c55e' : 'var(--border)'}`,
+              cursor: greenResult ? 'pointer' : 'not-allowed',
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Search size={14} /> {greenMode === 'decode' ? 'ถอดรหัส' : 'สร้าง QR'}
+          </button>
+        </div>
+
+        {/* ── Green Result ── */}
+        {greenResult && (
+          <div style={{
+            background: 'var(--bg-primary)',
+            borderRadius: 10,
+            padding: 16,
+            border: '1px solid #22c55e33',
+            animation: 'fadeIn 0.3s ease',
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 12 }}>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>QR Code</div>
+                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'monospace', color: '#22c55e', letterSpacing: 2 }}>
+                  {greenResult.qr}
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  <ArrowRight size={14} style={{ color: '#22c55e' }} />
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>เลขที่บัตร</span>
+                </div>
+                <div style={{
+                  fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: '#4ade80',
+                  marginTop: 4, letterSpacing: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                  {greenResult.serial}
+                  <button
+                    onClick={() => copyToClipboard(greenResult.serial, 'green-serial')}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: copiedId === 'green-serial' ? '#22c55e' : 'var(--text-secondary)',
+                      padding: 2,
+                    }}
+                    title="คัดลอก"
+                  >
+                    {copiedId === 'green-serial' ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  <ArrowRight size={14} style={{ color: '#ef4444' }} />
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>เล่มที่</span>
+                </div>
+                <div style={{
+                  fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: '#ef4444',
+                  marginTop: 4, letterSpacing: 1,
+                }}>
+                  {greenResult.bookId}
+                </div>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>ลำดับในเล่ม</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                  ใบที่ {greenResult.posInBook} / 20
+                </div>
+              </div>
+            </div>
+
+            {/* Decode formula */}
+            <div style={{
+              background: '#1e293b',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontFamily: 'monospace',
+              fontSize: 12,
+              color: '#94a3b8',
+              lineHeight: 1.8,
+              overflowWrap: 'break-word',
+              wordBreak: 'break-all',
+            }}>
+              <div><span style={{ color: '#94a3b8' }}>// QR → Base36 → ตัวเลข</span></div>
+              <div><span style={{ color: '#22c55e' }}>n</span> = parseInt(&quot;{greenResult.qr}&quot;, 36) = <span style={{ color: '#fbbf24' }}>{greenResult.n}</span></div>
+              <div><span style={{ color: '#22c55e' }}>i</span> = index(&quot;{greenResult.qr[1]}&quot;) = <span style={{ color: '#fbbf24' }}>{greenResult.i}</span></div>
+              <div><span style={{ color: '#22c55e' }}>K</span> = (32,216,237 × {greenResult.i} + 42,413,113) mod 10⁸ = <span style={{ color: '#fbbf24' }}>{greenResult.k.toLocaleString()}</span></div>
+              <div><span style={{ color: '#4ade80' }}>serial</span> = ({greenResult.n.toLocaleString()} + {greenResult.k.toLocaleString()}) mod 10⁸ = <span style={{ color: '#4ade80', fontWeight: 700 }}>{greenResult.serial}</span></div>
+            </div>
+          </div>
+        )}
+
+        {/* Info note */}
+        <div style={{ marginTop: 12, display: 'flex', gap: 6, alignItems: 'start', fontSize: 11, color: 'var(--text-secondary)' }}>
+          <Info size={12} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            อัลกอริทึมจาก <a href="https://verify.election.in.th/" target="_blank" rel="noopener noreferrer" style={{ color: '#22c55e' }}>verify.election.in.th</a> โดย <a href="https://x.com/killernay" target="_blank" rel="noopener noreferrer" style={{ color: '#22c55e' }}>@killernay</a> — QR Code บัตร ส.ส. แบ่งเขต ใช้ Base36 encoding 5 หลัก + K table (linear congruential)
+          </span>
+        </div>
+      </>)}
+
       </div>
 
       {/* ── History ── */}
@@ -283,7 +620,8 @@ export default function BallotBarcode() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>เลขที่บัตร (N)</th>
+                  <th style={{ textAlign: 'center', padding: '6px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>ประเภท</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>ข้อมูล</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>เล่มที่ (M)</th>
                   <th style={{ textAlign: 'center', padding: '6px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>ลำดับในเล่ม</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px', color: 'var(--text-secondary)', fontWeight: 600 }}>สูตร</th>
@@ -291,8 +629,17 @@ export default function BallotBarcode() {
               </thead>
               <tbody>
                 {history.map(h => (
-                  <tr key={h.input} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: 'var(--accent)', fontWeight: 600 }}>{h.input}</td>
+                  <tr key={h.input + h.type} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                        background: h.type === 'green' ? '#22c55e22' : '#f472b622',
+                        color: h.type === 'green' ? '#22c55e' : '#f472b6',
+                      }}>
+                        {h.type === 'green' ? 'เขต' : 'PL'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: h.type === 'green' ? '#22c55e' : 'var(--accent)', fontWeight: 600, fontSize: 12 }}>{h.input}</td>
                     <td style={{ padding: '8px 10px', fontFamily: 'monospace', color: '#ef4444', fontWeight: 700 }}>{h.bookId}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'center', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{h.pos} / 20</td>
                     <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-secondary)' }}>{h.formula}</td>
@@ -305,25 +652,35 @@ export default function BallotBarcode() {
           {/* Mobile: card list */}
           <div className="history-cards-mobile">
             {history.map(h => (
-              <div key={h.input} style={{
+              <div key={h.input + h.type} style={{
                 background: 'var(--bg-primary)',
                 borderRadius: 10,
                 padding: 12,
-                border: '1px solid var(--border)',
+                border: `1px solid ${h.type === 'green' ? '#22c55e33' : 'var(--border)'}`,
                 marginBottom: 8,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontFamily: 'monospace', color: 'var(--accent)', fontWeight: 600, fontSize: 15, letterSpacing: 0.5 }}>
-                    {h.input}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                      background: h.type === 'green' ? '#22c55e22' : '#f472b622',
+                      color: h.type === 'green' ? '#22c55e' : '#f472b6',
+                    }}>
+                      {h.type === 'green' ? 'เขต' : 'PL'}
+                    </span>
+                    <span style={{ fontFamily: 'monospace', color: h.type === 'green' ? '#22c55e' : 'var(--accent)', fontWeight: 600, fontSize: 13, letterSpacing: 0.5, wordBreak: 'break-all' }}>
+                      {h.input}
+                    </span>
                   </div>
                   <div style={{
                     background: '#ef444422',
                     color: '#ef4444',
                     fontFamily: 'monospace',
                     fontWeight: 700,
-                    fontSize: 14,
+                    fontSize: 12,
                     padding: '3px 10px',
                     borderRadius: 6,
+                    whiteSpace: 'nowrap',
                   }}>
                     เล่ม {h.bookId}
                   </div>
