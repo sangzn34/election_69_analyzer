@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
+import QRCode from 'qrcode'
+import JsBarcode from 'jsbarcode'
 import {
   ScanBarcode, ShieldAlert, Calculator, BookOpen, AlertTriangle,
   Check, Copy, ArrowRight, Info, ExternalLink, Hash, Search,
   ChevronDown, ChevronUp, Scale, Building2, Gavel, QrCode,
+  FileWarning, LockOpen, Lock,
 } from 'lucide-react'
 
 /* ─── Ballot type ─── */
@@ -105,6 +108,170 @@ function greenDecodeWithBook(qrCode: string) {
     posInBook,
     formula: `⌊${numericSerial} / 20⌋ + 1 = ${bookNum}`,
   }
+}
+
+/* ─── Real QR Code Component (scannable) ─── */
+function RealQRCode({ data, size }: { data: string; size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    if (!canvasRef.current || !data) return
+    QRCode.toCanvas(canvasRef.current, data, {
+      width: size,
+      margin: 0,
+      color: { dark: '#1a1a1a', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
+    }).catch(() => {})
+  }, [data, size])
+
+  return <canvas ref={canvasRef} style={{ display: 'block', width: size, height: size, borderRadius: 4 }} />
+}
+
+/* ─── Real Barcode Component (scannable Code128) ─── */
+function RealBarcode({ data, height }: { data: string; height?: number }) {
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  useEffect(() => {
+    if (!svgRef.current || !data) return
+    try {
+      JsBarcode(svgRef.current, data, {
+        format: 'CODE128',
+        width: 1.5,
+        height: height || 40,
+        displayValue: false,
+        margin: 0,
+        background: 'transparent',
+        lineColor: '#1a1a1a',
+      })
+    } catch {}
+  }, [data, height])
+
+  return <svg ref={svgRef} style={{ display: 'block', width: '100%', maxHeight: height || 40 }} />
+}
+
+/* ─── Ballot Card Visual Component ─── */
+function BallotCardVisual({ type, ballotNumber, bookId, posInBook, qrCode }: {
+  type: BallotType
+  ballotNumber: string
+  bookId: string
+  posInBook: number
+  qrCode?: string
+}) {
+  const isPink = type === 'pink'
+  const bgGradient = isPink
+    ? 'linear-gradient(160deg, #fce4ec 0%, #f8bbd0 30%, #f48fb1 70%, #f06292 100%)'
+    : 'linear-gradient(160deg, #e8f5e9 0%, #c8e6c9 30%, #a5d6a7 70%, #81c784 100%)'
+  const borderColor = isPink ? '#e91e63' : '#43a047'
+  const accentColor = isPink ? '#880e4f' : '#1b5e20'
+  const lightAccent = isPink ? '#ad1457' : '#2e7d32'
+  const subtleBg = isPink ? 'rgba(136, 14, 79, 0.08)' : 'rgba(27, 94, 32, 0.08)'
+
+  return (
+    <div style={{
+      position: 'relative',
+      background: bgGradient,
+      borderRadius: 12,
+      border: `2px solid ${borderColor}`,
+      padding: 0,
+      maxWidth: 420,
+      margin: '0 auto',
+      boxShadow: `0 8px 32px ${isPink ? 'rgba(233,30,99,0.2)' : 'rgba(67,160,71,0.2)'}, 0 2px 8px rgba(0,0,0,0.15)`,
+      overflow: 'hidden',
+      fontFamily: "'Sarabun', 'Noto Sans Thai', sans-serif",
+    }}>
+      {/* Watermark texture */}
+      <div style={{
+        position: 'absolute', inset: 0, opacity: 0.04,
+        backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 20px, ${accentColor} 20px, ${accentColor} 21px)`,
+        pointerEvents: 'none',
+      }} />
+
+      {/* Header */}
+      <div style={{ padding: '16px 16px 12px', textAlign: 'center', borderBottom: `1.5px dashed ${borderColor}55`, position: 'relative' }}>
+        <div style={{
+          width: 44, height: 44, margin: '0 auto 8px',
+          borderRadius: '50%',
+          background: `${accentColor}15`,
+          border: `1.5px solid ${accentColor}44`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{ color: accentColor, fontWeight: 700, fontSize: 16, lineHeight: 1 }}>&#3588;</span>
+        </div>
+        <div style={{ fontSize: 11, color: accentColor, fontWeight: 600, letterSpacing: 0.5, marginBottom: 2 }}>
+          บัตรเลือกตั้ง
+        </div>
+        <div style={{ fontSize: 14, color: accentColor, fontWeight: 800, lineHeight: 1.4 }}>
+          สมาชิกสภาผู้แทนราษฎร
+        </div>
+        <div style={{ fontSize: 12, color: lightAccent, fontWeight: 600, marginTop: 2 }}>
+          {isPink ? 'แบบบัญชีรายชื่อ' : 'แบบแบ่งเขตเลือกตั้ง'}
+        </div>
+      </div>
+
+      {/* Footer: Barcode / QR area */}
+      <div style={{ borderTop: `1.5px dashed ${borderColor}55`, padding: '12px 16px 14px', position: 'relative' }}>
+        <div style={{
+          position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+          background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700,
+          padding: '2px 10px', borderRadius: 10,
+          display: 'flex', alignItems: 'center', gap: 4,
+          boxShadow: '0 2px 8px rgba(239,68,68,0.4)', whiteSpace: 'nowrap', zIndex: 2,
+        }}>
+          <FileWarning size={10} /> จุดที่สืบย้อนได้
+        </div>
+
+        {isPink ? (
+          <div style={{
+            background: 'rgba(255,255,255,0.85)', borderRadius: 8,
+            padding: '10px 12px 8px', border: '2px dashed #ef444466', position: 'relative',
+          }}>
+            <RealBarcode data={ballotNumber} height={36} />
+            <div style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: '#1a1a1a', letterSpacing: 2, marginTop: 6 }}>
+              {ballotNumber}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, justifyContent: 'center' }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.85)', borderRadius: 8,
+              padding: 8, border: '2px dashed #ef444466', position: 'relative',
+            }}>
+              <RealQRCode data={qrCode || '00000'} size={72} />
+              <div style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 11, fontWeight: 700, color: '#1a1a1a', marginTop: 4, letterSpacing: 2 }}>
+                {qrCode || '-----'}
+              </div>
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: 9, color: `${accentColor}99`, marginBottom: 2 }}>เลขที่บัตร</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: '#1a1a1a', letterSpacing: 1 }}>
+                {ballotNumber}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Decoded info strip */}
+      <div style={{
+        background: isPink ? 'rgba(136,14,79,0.95)' : 'rgba(27,94,32,0.95)',
+        padding: '10px 16px',
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 11,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, marginBottom: 2 }}>เล่มที่</div>
+          <div style={{ color: '#fca5a5', fontWeight: 700, fontFamily: 'monospace', fontSize: 13 }}>{bookId}</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, marginBottom: 2 }}>ลำดับในเล่ม</div>
+          <div style={{ color: '#fff', fontWeight: 700, fontFamily: 'monospace', fontSize: 13 }}>{posInBook} / 20</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9, marginBottom: 2 }}>สืบย้อนได้?</div>
+          <div style={{ color: '#fca5a5', fontWeight: 700, fontSize: 12 }}>ได้</div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /* ─── PPTV evidence data ─── */
@@ -347,43 +514,14 @@ export default function BallotBarcode() {
             border: '1px solid var(--border)',
             animation: 'fadeIn 0.3s ease',
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 12 }}>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>เลขที่บัตร (N)</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)', letterSpacing: 1 }}>
-                  {result.input}
-                </div>
-              </div>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <ArrowRight size={14} style={{ color: '#ef4444' }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>เล่มที่ (M)</span>
-                </div>
-                <div style={{
-                  fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: '#ef4444',
-                  marginTop: 4, letterSpacing: 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}>
-                  {result.bookId}
-                  <button
-                    onClick={() => copyToClipboard(result.bookId, 'book')}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: copiedId === 'book' ? '#22c55e' : 'var(--text-secondary)',
-                      padding: 2,
-                    }}
-                    title="คัดลอก"
-                  >
-                    {copiedId === 'book' ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                </div>
-              </div>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>ลำดับที่ในเล่ม</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>
-                  ใบที่ {result.posInBook} / 20
-                </div>
-              </div>
+            {/* Ballot Card Visual */}
+            <div style={{ marginBottom: 16 }}>
+              <BallotCardVisual
+                type="pink"
+                ballotNumber={result.input}
+                bookId={result.bookId}
+                posInBook={result.posInBook}
+              />
             </div>
 
             {/* formula */}
@@ -443,9 +581,10 @@ export default function BallotBarcode() {
               background: greenMode === 'decode' ? '#22c55e22' : 'transparent',
               border: `1px solid ${greenMode === 'decode' ? '#22c55e' : 'var(--border)'}`,
               color: greenMode === 'decode' ? '#22c55e' : 'var(--text-secondary)',
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            🔓 Decode (QR → เลขที่บัตร)
+            <LockOpen size={12} /> Decode (QR → เลขที่บัตร)
           </button>
           <button
             onClick={() => { setGreenMode('encode'); setGreenInput('') }}
@@ -454,9 +593,10 @@ export default function BallotBarcode() {
               background: greenMode === 'encode' ? '#22c55e22' : 'transparent',
               border: `1px solid ${greenMode === 'encode' ? '#22c55e' : 'var(--border)'}`,
               color: greenMode === 'encode' ? '#22c55e' : 'var(--text-secondary)',
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            🔑 Encode (เลขที่บัตร → QR)
+            <Lock size={12} /> Encode (เลขที่บัตร → QR)
           </button>
         </div>
 
@@ -519,55 +659,15 @@ export default function BallotBarcode() {
             border: '1px solid #22c55e33',
             animation: 'fadeIn 0.3s ease',
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12, marginBottom: 12 }}>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>QR Code</div>
-                <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'monospace', color: '#22c55e', letterSpacing: 2 }}>
-                  {greenResult.qr}
-                </div>
-              </div>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <ArrowRight size={14} style={{ color: '#22c55e' }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>เลขที่บัตร</span>
-                </div>
-                <div style={{
-                  fontSize: 18, fontWeight: 700, fontFamily: 'monospace', color: '#4ade80',
-                  marginTop: 4, letterSpacing: 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}>
-                  {greenResult.serial}
-                  <button
-                    onClick={() => copyToClipboard(greenResult.serial, 'green-serial')}
-                    style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: copiedId === 'green-serial' ? '#22c55e' : 'var(--text-secondary)',
-                      padding: 2,
-                    }}
-                    title="คัดลอก"
-                  >
-                    {copiedId === 'green-serial' ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                </div>
-              </div>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <ArrowRight size={14} style={{ color: '#ef4444' }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>เล่มที่</span>
-                </div>
-                <div style={{
-                  fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: '#ef4444',
-                  marginTop: 4, letterSpacing: 1,
-                }}>
-                  {greenResult.bookId}
-                </div>
-              </div>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>ลำดับในเล่ม</div>
-                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>
-                  ใบที่ {greenResult.posInBook} / 20
-                </div>
-              </div>
+            {/* Ballot Card Visual */}
+            <div style={{ marginBottom: 16 }}>
+              <BallotCardVisual
+                type="green"
+                ballotNumber={greenResult.serial}
+                bookId={greenResult.bookId}
+                posInBook={greenResult.posInBook}
+                qrCode={greenResult.qr}
+              />
             </div>
 
             {/* Decode formula */}
