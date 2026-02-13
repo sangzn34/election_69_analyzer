@@ -282,6 +282,12 @@ const PPTV_EVIDENCE = [
   { ballot: 'A37804930', party: 'พรรคภูมิใจไทย', color: '#3498db' },
 ]
 
+/* ─── Green ballot example QR codes ─── */
+const GREEN_EXAMPLES = [
+  { qr: 'EH1RQ', label: 'EH1RQ', color: '#22c55e' },
+  { qr: 'K7W9D', label: 'K7W9D', color: '#16a34a' },
+]
+
 /* ─── Component ─── */
 export default function BallotBarcode() {
   const [ballotType, setBallotType] = useState<BallotType>('pink')
@@ -348,6 +354,20 @@ export default function BallotBarcode() {
       setHistory(prev => {
         if (prev.some(h => h.input === r.input && h.type === 'pink')) return prev
         return [{ input: r.input, bookId: r.bookId, pos: r.posInBook, formula: r.formula, type: 'pink' as BallotType }, ...prev].slice(0, 20)
+      })
+    }
+  }, [])
+
+  const handleGreenExample = useCallback((qr: string) => {
+    setGreenInput(qr)
+    setGreenMode('decode')
+    setBallotType('green')
+    const r = greenDecodeWithBook(qr)
+    if (r) {
+      const label = `QR:${qr.toUpperCase()}→${r.serial}`
+      setHistory(prev => {
+        if (prev.some(h => h.input === label && h.type === 'green')) return prev
+        return [{ input: label, bookId: r.bookId, pos: r.posInBook, formula: r.formula, type: 'green' as BallotType }, ...prev].slice(0, 20)
       })
     }
   }, [])
@@ -690,6 +710,29 @@ export default function BallotBarcode() {
             </div>
           </div>
         )}
+
+        {/* Quick examples */}
+        <div style={{ marginTop: 14, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>ตัวอย่าง:</span>
+          {GREEN_EXAMPLES.map(e => (
+            <button
+              key={e.qr}
+              onClick={() => handleGreenExample(e.qr)}
+              style={{
+                padding: '3px 10px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontFamily: 'monospace',
+                background: greenInput.toUpperCase() === e.qr ? `${e.color}22` : 'var(--bg-primary)',
+                border: `1px solid ${greenInput.toUpperCase() === e.qr ? e.color : 'var(--border)'}`,
+                color: greenInput.toUpperCase() === e.qr ? e.color : 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              {e.label}
+            </button>
+          ))}
+        </div>
 
         {/* Info note */}
         <div style={{ marginTop: 12, display: 'flex', gap: 6, alignItems: 'start', fontSize: 11, color: 'var(--text-secondary)' }}>
