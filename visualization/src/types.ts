@@ -757,6 +757,112 @@ export interface BallotImbalance {
   meta: BallotImbalanceMeta
 }
 
+// ─── Myagkov-Ordeshook: Turnout vs Winner Share ───
+export interface MyagkovPoint {
+  areaCode: string
+  areaName: string
+  province: string
+  turnoutPct: number
+  winnerPct: number
+  marginPct: number
+  winnerParty: string
+  winnerPartyCode: string
+  winnerPartyColor: string
+  eligibleVoters: number
+}
+
+export interface MyagkovPartyCorrelation {
+  partyCode: string
+  partyName: string
+  partyColor: string
+  n: number
+  r: number
+  p: number
+  slope: number
+  intercept: number
+  suspicious: boolean
+}
+
+export interface MyagkovMeta {
+  totalAreas: number
+  overallR: number
+  overallP: number
+  avgTurnout: number
+  avgWinnerPct: number
+  p85Turnout: number
+  p85WinnerPct: number
+  flaggedCount: number
+}
+
+export interface MyagkovAnalysis {
+  points: MyagkovPoint[]
+  partyCorrelations: MyagkovPartyCorrelation[]
+  flagged: MyagkovPoint[]
+  meta: MyagkovMeta
+}
+
+// ─── Ecological Inference — Transition Matrix (66 → 69) ───
+export interface EcoTransitionCell {
+  party69: string
+  count: number
+  pct: number
+}
+
+export interface EcoMatrixRow {
+  party66: string
+  party66Color: string
+  total66: number
+  cells: EcoTransitionCell[]
+  otherCount: number
+  otherPct: number
+}
+
+export interface EcoColLabel {
+  party: string
+  color: string
+}
+
+export interface EcoRetention {
+  party: string
+  partyCode: string
+  partyColor: string
+  seats66: number
+  seats69: number
+  retained: number
+  retainPct: number
+  gained: number
+  lost: number
+  net: number
+}
+
+export interface EcoChangedArea {
+  areaCode: string
+  areaName: string
+  province: string
+  party66Code: string
+  party66Name: string
+  party66Color: string
+  party69Code: string
+  party69Name: string
+  party69Color: string
+  changed: boolean
+}
+
+export interface EcoMeta {
+  totalAreas: number
+  changedAreas: number
+  changedPct: number
+  retainedAreas: number
+}
+
+export interface EcologicalInference {
+  matrixRows: EcoMatrixRow[]
+  colLabels: EcoColLabel[]
+  retention: EcoRetention[]
+  changedAreas: EcoChangedArea[]
+  meta: EcoMeta
+}
+
 // ─── Full Election Data ───
 export interface ElectionData {
   summary: Summary
@@ -804,4 +910,8 @@ export interface ElectionData {
   mpPlComparison?: MpPlComparison
   // Ballot Imbalance (บัตรเขย่ง)
   ballotImbalance?: BallotImbalance
+  // Myagkov-Ordeshook: Turnout vs Winner Share
+  myagkovAnalysis?: MyagkovAnalysis
+  // Ecological Inference — Transition Matrix (66 → 69)
+  ecologicalInference?: EcologicalInference
 }

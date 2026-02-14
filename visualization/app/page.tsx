@@ -33,6 +33,8 @@ import SwitcherVoteComparison from '../src/components/SwitcherVoteComparison'
 import MpPlComparison from '../src/components/MpPlComparison'
 import BallotImbalance from '../src/components/BallotImbalance'
 import BallotBarcode from '../src/components/BallotBarcode'
+import TurnoutShareMyagkov from '../src/components/TurnoutShareMyagkov'
+import EcologicalInferenceView from '../src/components/EcologicalInference'
 import ElectionNews from '../src/components/ElectionNews'
 import { ScrollArea } from '../src/components/ui/ScrollArea'
 import { buildPartyNameToCode } from '../src/utils/partyLogo'
@@ -46,7 +48,7 @@ type SectionId =
   | 'province' | 'map' | 'explorer' | 'list'
   | 'turnout' | 'splitting' | 'margin' | 'spoiled'
   | 'ensemble' | 'mpPl' | 'ballotImbalance'
-  | 'barcode' | 'news'
+  | 'barcode' | 'news' | 'myagkov' | 'ecological'
 
 interface MenuItem {
   id: SectionId
@@ -65,7 +67,7 @@ const ALL_SECTIONS: SectionId[] = [
   'province', 'map', 'explorer', 'list',
   'turnout', 'splitting', 'margin', 'spoiled',
   'ensemble', 'mpPl', 'ballotImbalance',
-  'barcode', 'news',
+  'barcode', 'news', 'myagkov', 'ecological',
 ]
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '/election_69_analyzer'
@@ -171,6 +173,7 @@ export default function HomePage() {
         ...(data.turnoutAnomaly ? [{ id: 'turnout' as const, label: 'Turnout ผิดปกติ', emoji: <TrendingDown size={16} /> }] : []),
         ...(data.mpPlComparison ? [{ id: 'mpPl' as const, label: 'ส.ส.เขต vs บัญชีรายชื่อ', emoji: <Vote size={16} /> }] : []),
         ...(data.ballotImbalance ? [{ id: 'ballotImbalance' as const, label: 'บัตรเขย่ง', emoji: <TriangleAlert size={16} /> }] : []),
+        ...(data.myagkovAnalysis ? [{ id: 'myagkov' as const, label: 'Turnout-Share (Myagkov)', emoji: <Microscope size={16} /> }] : []),
         ...(data.voteSplitting ? [{ id: 'splitting' as const, label: 'Vote Splitting', emoji: <Scissors size={16} /> }] : []),
         ...(data.winningMargins ? [{ id: 'margin' as const, label: 'Winning Margin', emoji: <Flag size={16} /> }] : []),
         ...(data.spoiledComparison ? [{ id: 'spoiled' as const, label: 'บัตรไม่สมบูรณ์ 66 vs 69', emoji: <FileWarning size={16} /> }] : []),
@@ -185,6 +188,7 @@ export default function HomePage() {
         { id: 'switcherDetail' as SectionId, label: 'ส.ส. ย้ายพรรค (รายคน)', emoji: <ArrowRightLeft size={16} /> },
         ...(data.switcherVoteComparison ? [{ id: 'switcherVote' as const, label: 'คะแนน 66 vs 69', emoji: <TrendingUp size={16} /> }] : []),
         { id: 'retention' as SectionId, label: 'ส.ส.66 รักษาที่นั่ง', emoji: <Medal size={16} /> },
+        ...(data.ecologicalInference ? [{ id: 'ecological' as const, label: 'Transition Matrix (66→69)', emoji: <ArrowLeftRight size={16} /> }] : []),
       ],
     },
     {
@@ -272,6 +276,8 @@ export default function HomePage() {
           {activeSection === 'splitting' && data.voteSplitting && <VoteSplitting data={data.voteSplitting} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'mpPl' && data.mpPlComparison && <MpPlComparison data={data.mpPlComparison} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'ballotImbalance' && data.ballotImbalance && <BallotImbalance data={data.ballotImbalance} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'myagkov' && data.myagkovAnalysis && <TurnoutShareMyagkov data={data.myagkovAnalysis} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'ecological' && data.ecologicalInference && <EcologicalInferenceView data={data.ecologicalInference} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'margin' && data.winningMargins && <WinningMargin data={data.winningMargins} />}
           {activeSection === 'spoiled' && data.spoiledComparison && data.spoiledComparisonMeta && <SpoiledComparison data={data.spoiledComparison} meta={data.spoiledComparisonMeta} nameToCodeMap={nameToCodeMap} comparison={data.electionComparison} />}
           {activeSection === 'ensemble' && data.ensembleAnalysis && data.ensemblePartySummary && <EnsembleAnalysis data={data.ensembleAnalysis} partySummary={data.ensemblePartySummary} meta={data.ensembleMeta} nameToCodeMap={nameToCodeMap} nullModel={data.nullModelAnalysis} klimek={data.klimekAnalysis} lastDigit={data.lastDigitAnalysis} secondDigitBenford={data.secondDigitBenfordAnalysis} />}

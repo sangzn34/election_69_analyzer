@@ -1364,6 +1364,184 @@ def main():
     winning_margins.sort(key=lambda x: x['marginPercent'])
 
     # ═══════════════════════════════════════════════════════════════
+    # ── MYAGKOV-ORDESHOOK: Turnout vs Winner Vote-Share ──
+    # In a clean election, higher turnout should NOT systematically
+    # boost a single party's vote-share.  A strong positive correlation
+    # (r > 0.3) between turnout and the winner's % is a classic
+    # ballot-stuffing fingerprint (Myagkov, Ordeshook & Shakin 2009).
+    # ═══════════════════════════════════════════════════════════════
+    import math
+
+    myagkov_points = []      # per-area scatter data
+    myagkov_party_corr = []  # per-party Pearson r
+    myagkov_flagged = []     # high-turnout + high-share outliers
+
+    # Load ECT API stats_cons for actual voter turnout percentages
+    ECT_STATS_CONS_FILE = os.path.join(BASE_DIR, 'data', 'ect_api', 'stats_cons.json')
+    ECT_INFO_PROVINCE_FILE = os.path.join(BASE_DIR, 'data', 'ect_api', 'info_province.json')
+    ect_turnout_map = {}  # areaCode (e.g. "1001") -> percent_turn_out
+    if os.path.exists(ECT_STATS_CONS_FILE) and os.path.exists(ECT_INFO_PROVINCE_FILE):
+        with open(ECT_STATS_CONS_FILE, 'r', encoding='utf-8') as f:
+            ect_stats = json.load(f)
+        with open(ECT_INFO_PROVINCE_FILE, 'r', encoding='utf-8') as f:
+            ect_prov_info = json.load(f)
+        # Build prov_id -> province_id mapping dynamically from info_province
+        PROV_ID_MAP = {}
+        for p in ect_prov_info.get('province', []):
+            PROV_ID_MAP[p['prov_id']] = p['province_id']
+        for prov in ect_stats.get('result_province', []):
+            prov_id = prov.get('prov_id', '')
+            prov_code = PROV_ID_MAP.get(prov_id, '')
+            if not prov_code:
+                continue
+            for cons in prov.get('constituencies', []):
+                cons_id = cons.get('cons_id', '')  # e.g. "BKK_1"
+                parts = cons_id.split('_')
+                if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) > 0:
+                    area_code = prov_code + str(int(parts[1])).zfill(2)  # e.g. "1001"
+                    turnout_val = cons.get('percent_turn_out', 0)
+                    if turnout_val > 0:
+                        ect_turnout_map[area_code] = turnout_val
+
+    print(f"  🗳️ ECT Turnout map loaded: {len(ect_turnout_map)} constituencies")
+
+    # Collect per-area points
+    all_turnout_for_myagkov = []
+    all_winner_pct_for_myagkov = []
+
+    for ac, cd in constituency_data.items():
+        eligible = cd.get('totalEligibleVoters', 0)
+        # Use ECT API turnout (actual voter turnout), fallback to computing from MP data
+        turnout_pct = ect_turnout_map.get(ac, 0)
+        if turnout_pct == 0:
+            # Fallback: calculate from MP votes / eligible
+            mp_file_path = os.path.join(MP_DIR, f'{ac}.json')
+            if os.path.exists(mp_file_path) and eligible > 0:
+                with open(mp_file_path, 'r', encoding='utf-8') as f:
+                    mp_raw_tmp = json.load(f)
+                total_votes = sum(e['voteTotal'] for e in mp_raw_tmp.get('entries', []))
+                turnout_pct = total_votes / eligible * 100 if eligible > 0 else 0
+
+        top = cd.get('topEntries', [])
+        if eligible == 0 or turnout_pct == 0 or not top:
+            continue
+        winner_pct = top[0].get('votePercent', 0)
+        winner_code = cd.get('winnerPartyCode', '')
+        area_name = area_name_map.get(ac, f'เขต {ac}')
+        province = get_province(area_name)
+
+        # margin
+        margin_pct = 0
+        if len(top) >= 2:
+            total_top2 = top[0]['voteTotal'] + top[1]['voteTotal']
+            if total_top2 > 0:
+                margin_pct = round((top[0]['voteTotal'] - top[1]['voteTotal']) / total_top2 * 100, 2)
+
+        myagkov_points.append({
+            'areaCode': ac,
+            'areaName': area_name,
+            'province': province,
+            'turnoutPct': round(turnout_pct, 2),
+            'winnerPct': round(winner_pct, 2),
+            'marginPct': margin_pct,
+            'winnerParty': get_party_name(winner_code),
+            'winnerPartyCode': winner_code,
+            'winnerPartyColor': get_party_color(winner_code),
+            'eligibleVoters': eligible,
+        })
+        all_turnout_for_myagkov.append(turnout_pct)
+        all_winner_pct_for_myagkov.append(winner_pct)
+
+    # Overall Pearson correlation
+    def pearson_r(xs, ys):
+        n = len(xs)
+        if n < 3:
+            return 0.0, 1.0
+        mx = sum(xs) / n
+        my = sum(ys) / n
+        sx = math.sqrt(sum((x - mx) ** 2 for x in xs) / (n - 1))
+        sy = math.sqrt(sum((y - my) ** 2 for y in ys) / (n - 1))
+        if sx == 0 or sy == 0:
+            return 0.0, 1.0
+        r_val = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / ((n - 1) * sx * sy)
+        # t-test for significance
+        if abs(r_val) >= 1.0:
+            return r_val, 0.0
+        t_stat = r_val * math.sqrt((n - 2) / (1 - r_val ** 2))
+        # Approximate p-value using normal distribution for large n
+        p_val = 2 * math.erfc(abs(t_stat) / math.sqrt(2)) / 2  # two-tailed
+        # Better approximation for moderate n
+        p_val = max(0.0, min(1.0, 2 * (1 - 0.5 * (1 + math.erf(abs(t_stat) / math.sqrt(2))))))
+        return round(r_val, 4), round(p_val, 6)
+
+    overall_r, overall_p = pearson_r(all_turnout_for_myagkov, all_winner_pct_for_myagkov)
+
+    # Per-party correlation (top 8 parties by # of winning areas)
+    party_areas = {}  # partyCode -> list of (turnout, winnerPct)
+    for pt in myagkov_points:
+        pc = pt['winnerPartyCode']
+        if pc not in party_areas:
+            party_areas[pc] = []
+        party_areas[pc].append((pt['turnoutPct'], pt['winnerPct']))
+
+    top_parties_by_count = sorted(party_areas.items(), key=lambda x: -len(x[1]))[:8]
+
+    for pc, pairs in top_parties_by_count:
+        if len(pairs) < 5:
+            continue
+        ts = [p[0] for p in pairs]
+        ws = [p[1] for p in pairs]
+        r_val, p_val = pearson_r(ts, ws)
+        # Regression line (y = slope*x + intercept)
+        n = len(ts)
+        mx = sum(ts) / n
+        my = sum(ws) / n
+        sx2 = sum((t - mx) ** 2 for t in ts)
+        slope = sum((t - mx) * (w - my) for t, w in zip(ts, ws)) / sx2 if sx2 > 0 else 0
+        intercept = my - slope * mx
+        suspicious = p_val < 0.05 and r_val > 0.2
+
+        myagkov_party_corr.append({
+            'partyCode': pc,
+            'partyName': get_party_name(pc),
+            'partyColor': get_party_color(pc),
+            'n': n,
+            'r': r_val,
+            'p': p_val,
+            'slope': round(slope, 4),
+            'intercept': round(intercept, 2),
+            'suspicious': suspicious,
+        })
+
+    myagkov_party_corr.sort(key=lambda x: -x['n'])
+
+    # Flag areas: turnout > P85 AND winner_pct > P85
+    if all_turnout_for_myagkov:
+        sorted_t = sorted(all_turnout_for_myagkov)
+        sorted_w = sorted(all_winner_pct_for_myagkov)
+        p85_t = sorted_t[int(len(sorted_t) * 0.85)]
+        p85_w = sorted_w[int(len(sorted_w) * 0.85)]
+
+        for pt in myagkov_points:
+            if pt['turnoutPct'] > p85_t and pt['winnerPct'] > p85_w:
+                myagkov_flagged.append(pt)
+
+        myagkov_flagged.sort(key=lambda x: -x['winnerPct'])
+
+    myagkov_meta = {
+        'totalAreas': len(myagkov_points),
+        'overallR': overall_r,
+        'overallP': overall_p,
+        'avgTurnout': round(sum(all_turnout_for_myagkov) / len(all_turnout_for_myagkov), 2) if all_turnout_for_myagkov else 0,
+        'avgWinnerPct': round(sum(all_winner_pct_for_myagkov) / len(all_winner_pct_for_myagkov), 2) if all_winner_pct_for_myagkov else 0,
+        'p85Turnout': round(p85_t, 2) if all_turnout_for_myagkov else 0,
+        'p85WinnerPct': round(p85_w, 2) if all_turnout_for_myagkov else 0,
+        'flaggedCount': len(myagkov_flagged),
+    }
+
+    print(f"  🔬 Myagkov-Ordeshook: {len(myagkov_points)} areas, overall r={overall_r}, flagged={len(myagkov_flagged)}")
+
+    # ═══════════════════════════════════════════════════════════════
     # ── SPOILED BALLOT COMPARISON: MP Election vs Referendum ──
     # Both ballots cast on the same day by the same voters.
     # Uses referendum totalVotes as actual turnout (same voters cast both ballots).
@@ -3125,6 +3303,137 @@ def main():
     print(f"  📐 2nd-Digit Benford: conform={sd_conform}, deviate(p≤0.05)={sd_deviate}")
     print(f"  📐 Global 2nd-digit χ²={round(global_sd_chi2, 3)}, p={round(global_sd_p, 4)}, total={global_second_digit_total}")
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # 📊 Ecological Inference — Transition Matrix (66 → 69)
+    # Compare which party won each constituency in election 66 vs 69
+    # ═══════════════════════════════════════════════════════════════════════
+    print("\n📊 Computing Ecological Inference Transition Matrix (66 → 69)...")
+
+    # Build per-area transition data from constituency.json
+    eco_areas = []
+    for cd_item in constituency_data.values():
+        ac = cd_item.get('areaCode', '')
+        w66 = cd_item.get('win66PartyCode', '')
+        w69 = cd_item.get('winnerPartyCode', '')
+        if not ac or not w66 or not w69:
+            continue
+        w66_name = get_party_name(w66)
+        w69_name = get_party_name(w69)
+        ac_stripped = ac.replace('AREA-', '')
+        a_name = area_name_map.get(ac_stripped, f'เขต {ac_stripped}')
+        province = get_province(a_name)
+        changed = w66 != w69
+        eco_areas.append({
+            'areaCode': ac,
+            'areaName': a_name,
+            'province': province,
+            'party66Code': w66,
+            'party66Name': w66_name,
+            'party66Color': get_party_color(w66),
+            'party69Code': w69,
+            'party69Name': w69_name,
+            'party69Color': get_party_color(w69),
+            'changed': changed,
+        })
+
+    # Count seats per party in 66 and 69
+    seats_66 = {}
+    seats_69 = {}
+    for a in eco_areas:
+        p66 = a['party66Name']
+        p69 = a['party69Name']
+        seats_66[p66] = seats_66.get(p66, 0) + 1
+        seats_69[p69] = seats_69.get(p69, 0) + 1
+
+    # Top parties for matrix (by # of seats in either election, top 8)
+    all_party_seats = {}
+    for p, c in seats_66.items():
+        all_party_seats[p] = all_party_seats.get(p, 0) + c
+    for p, c in seats_69.items():
+        all_party_seats[p] = all_party_seats.get(p, 0) + c
+    top_parties_eco = sorted(all_party_seats.keys(), key=lambda p: all_party_seats[p], reverse=True)[:10]
+
+    # Build transition count matrix: matrix[from_66][to_69] = count
+    trans_count = {}
+    for a in eco_areas:
+        p66 = a['party66Name']
+        p69 = a['party69Name']
+        if p66 not in trans_count:
+            trans_count[p66] = {}
+        trans_count[p66][p69] = trans_count[p66].get(p69, 0) + 1
+
+    # Build matrix rows (for top parties)
+    # rows = party66, cols = party69
+    eco_matrix_rows = []
+    for p66 in top_parties_eco:
+        row_counts = trans_count.get(p66, {})
+        total_66 = sum(row_counts.values())
+        cells = []
+        for p69 in top_parties_eco:
+            count = row_counts.get(p69, 0)
+            pct = round(count / total_66 * 100, 1) if total_66 > 0 else 0.0
+            cells.append({
+                'party69': p69,
+                'count': count,
+                'pct': pct,
+            })
+        # "Other" column: seats that went to parties not in top list
+        other_count = sum(c for p, c in row_counts.items() if p not in top_parties_eco)
+        other_pct = round(other_count / total_66 * 100, 1) if total_66 > 0 else 0.0
+
+        eco_matrix_rows.append({
+            'party66': p66,
+            'party66Color': get_party_color(next((a['party66Code'] for a in eco_areas if a['party66Name'] == p66), '')),
+            'total66': total_66,
+            'cells': cells,
+            'otherCount': other_count,
+            'otherPct': other_pct,
+        })
+
+    # Retention summary: for each party, % of 66 seats retained + seats gained in 69
+    eco_retention = []
+    for p in top_parties_eco:
+        s66 = seats_66.get(p, 0)
+        s69 = seats_69.get(p, 0)
+        retained = trans_count.get(p, {}).get(p, 0)
+        retain_pct = round(retained / s66 * 100, 1) if s66 > 0 else 0.0
+        gained = s69 - retained  # seats won in 69 that were NOT this party in 66
+        lost = s66 - retained
+        net = s69 - s66
+        # Find party code for color
+        p_code = next((a['party66Code'] for a in eco_areas if a['party66Name'] == p), next((a['party69Code'] for a in eco_areas if a['party69Name'] == p), ''))
+        eco_retention.append({
+            'party': p,
+            'partyCode': p_code,
+            'partyColor': get_party_color(p_code),
+            'seats66': s66,
+            'seats69': s69,
+            'retained': retained,
+            'retainPct': retain_pct,
+            'gained': gained,
+            'lost': lost,
+            'net': net,
+        })
+    eco_retention.sort(key=lambda x: x['seats69'], reverse=True)
+
+    # Per-area detail (only changed constituencies)
+    eco_changed_areas = [a for a in eco_areas if a['changed']]
+    eco_changed_areas.sort(key=lambda a: a['province'])
+
+    # Column labels for the matrix (party69 names in order)
+    eco_col_labels = [{'party': p, 'color': get_party_color(next((a['party69Code'] for a in eco_areas if a['party69Name'] == p), ''))} for p in top_parties_eco]
+
+    eco_meta = {
+        'totalAreas': len(eco_areas),
+        'changedAreas': len(eco_changed_areas),
+        'changedPct': round(len(eco_changed_areas) / len(eco_areas) * 100, 1) if eco_areas else 0.0,
+        'retainedAreas': len(eco_areas) - len(eco_changed_areas),
+    }
+
+    print(f"  📊 Ecological Inference: {eco_meta['totalAreas']} areas, {eco_meta['changedAreas']} changed ({eco_meta['changedPct']}%)")
+    for r in eco_retention[:5]:
+        print(f"     {r['party']}: 66={r['seats66']} → 69={r['seats69']} (retained {r['retainPct']}%, net {'+' if r['net'] > 0 else ''}{r['net']})")
+
     output = {
         'summary': {
             'totalAreas': total_areas,
@@ -3158,6 +3467,21 @@ def main():
         'turnoutAnomaly': turnout_anomaly,
         'voteSplitting': vote_splitting,
         'winningMargins': winning_margins,
+        # Myagkov-Ordeshook: Turnout vs Winner Vote-Share Correlation
+        'myagkovAnalysis': {
+            'points': myagkov_points,
+            'partyCorrelations': myagkov_party_corr,
+            'flagged': myagkov_flagged,
+            'meta': myagkov_meta,
+        },
+        # Ecological Inference — Transition Matrix (66 → 69)
+        'ecologicalInference': {
+            'matrixRows': eco_matrix_rows,
+            'colLabels': eco_col_labels,
+            'retention': eco_retention,
+            'changedAreas': eco_changed_areas,
+            'meta': eco_meta,
+        },
         # MP vs Party-List Comparison (ส้มหล่น analysis)
         'mpPlComparison': {
             'partySummary': mp_pl_party_summary,
