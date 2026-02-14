@@ -7,6 +7,7 @@ import {
 import { ArrowLeftRight, BarChart3, Shuffle, Download } from 'lucide-react'
 import type { PartySwitcherFlow, PartySwitcherSummaryItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 interface Props {
   flows: PartySwitcherFlow[]
@@ -155,6 +156,18 @@ export default function PartySwitcher({ flows, summary, nameToCodeMap }: Props) 
           </div>
         </>
       )}
+
+      <AnalysisSummary
+        title="วิเคราะห์การย้ายพรรค"
+        methodology="ติดตาม<strong>ผู้สมัคร ส.ส.</strong> ที่ลงสมัครในเลือกตั้ง 66 กับพรรคหนึ่ง แล้ว<strong>ย้ายมาลงสมัครกับพรรคอื่น</strong>ในเลือกตั้ง 69 — แสดง flow ว่าใครย้ายจากพรรคไหนไปพรรคไหน และพรรคไหนรับผู้สมัครจากพรรคอื่นมากที่สุด"
+        findings={[
+          `พบ <strong>${flows.length}</strong> flow การย้ายพรรค`,
+          `พรรคที่รับคนย้ายเข้ามากที่สุด: <strong>${summary.sort((a, b) => b.received - a.received)[0]?.party || '-'}</strong> (${summary[0]?.received || 0} คน)`,
+          `Flow ที่ใหญ่ที่สุด: <strong>${flows[0]?.fromParty66 || '-'}</strong> → <strong>${flows[0]?.toParty || '-'}</strong> (${flows[0]?.count || 0} คน)`,
+        ]}
+        interpretation="การย้ายพรรคของผู้สมัครบ่งชี้<strong>การเปลี่ยนแปลงภูมิทัศน์ทางการเมือง</strong> — พรรคที่รับคนย้ายเข้ามากอาจกำลัง<strong>ขยายฐาน</strong>โดยใช้เครือข่ายของผู้สมัครจากพรรคเดิม ผู้สมัครที่ย้ายพรรคอาจ<strong>พาฐานเสียง</strong>ไปด้วย หรืออาจ<strong>เสียฐานเสียง</strong>เพราะชาวบ้านยึดติดกับพรรคเดิม"
+        limitation="ข้อมูลจับคู่ด้วยชื่อ-นามสกุล ซึ่งอาจมีกรณีที่ชื่อซ้ำหรือ typo — นอกจากนี้บางคนอาจย้ายพรรคหลายรอบก่อนเลือกตั้ง 69 แต่ข้อมูลแสดงเฉพาะ snapshot 66 vs 69"
+      />
     </div>
   )
 }

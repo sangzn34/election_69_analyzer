@@ -7,6 +7,7 @@ import {
 import { Scissors, CheckCircle, ListFilter, CircleCheck } from 'lucide-react'
 import type { VoteSplittingItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 interface TooltipProps {
   active?: boolean
@@ -147,6 +148,19 @@ export default function VoteSplitting({ data, nameToCodeMap }: Props) {
           </tbody>
         </table>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Vote Splitting"
+        methodology="เปรียบเทียบ<strong>พรรคของ ส.ส. ผู้ชนะ (MP)</strong> กับ <strong>พรรคอันดับ 1 บัญชีรายชื่อ (PL)</strong> ในแต่ละเขต — ถ้าไม่ใช่พรรคเดียวกันแสดงว่าเกิด 'Vote Splitting' คือประชาชนเลือกตัวบุคคลแยกจากพรรค ข้อมูลนี้แยกตามพรรค ส.ส. ผู้ชนะเพื่อดูว่าพรรคไหนมีเขต split มากที่สุด"
+        findings={[
+          `จาก <strong>${stats.total}</strong> เขต มี Vote Splitting <strong>${stats.split}</strong> เขต (<strong>${stats.splitPct}%</strong>)`,
+          `เขตที่ไม่มี split (เลือกพรรคเดียวกัน): <strong>${stats.same}</strong> เขต`,
+          `พรรคที่มี split มากที่สุด: <strong>${partyBreakdown[0]?.party || '-'}</strong> (${partyBreakdown[0]?.split || 0} เขต จาก ${partyBreakdown[0]?.total || 0} เขต)`,
+          `Vote Splitting สูงบ่งชี้ว่าผู้ลงคะแนนตัดสินใจเลือก<strong>ตัวบุคคล</strong>แยกจาก<strong>นโยบายพรรค</strong>`,
+        ]}
+        interpretation="Vote Splitting ในระดับสูงอาจบ่งชี้: (1) ผู้สมัคร ส.ส. มี<strong>ฐานเสียงส่วนตัว</strong>ที่แข็งแกร่ง, (2) มี<strong>การซื้อเสียง</strong>เฉพาะบัตร ส.ส. แต่ผู้ลงคะแนนเลือกพรรคที่ชอบจริงในบัตร PL, หรือ (3) ผู้สมัครของพรรคอื่นใน ส.ส. เขตมี<strong>ชื่อเสียง/ผลงาน</strong>ที่ดีกว่าพรรคตัวเอง — พรรคที่มี split สูง ควรตั้งคำถามว่าชัยชนะมาจากตัวบุคคลหรือจากพรรค"
+        limitation="การวิเคราะห์ใช้เฉพาะอันดับ 1 ของแต่ละระบบ ไม่ได้ดูสัดส่วนคะแนนทั้งหมด — บางเขตอาจมี margin ที่แคบมากจนการ split ไม่มีนัยสำคัญทางสถิติ"
+      />
     </div>
   )
 }

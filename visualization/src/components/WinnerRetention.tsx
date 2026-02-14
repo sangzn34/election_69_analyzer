@@ -7,6 +7,7 @@ import {
 import { BarChart3, CornerDownRight, HeartCrack, Medal, Home, UserPlus, TableProperties, Search, ArrowUpDown } from 'lucide-react'
 import type { RetentionSummaryItem, WinnerRetentionItem, Lost66WinnerItem, Summary, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 interface Props {
   retentionSummary: RetentionSummaryItem[]
@@ -359,6 +360,19 @@ export default function WinnerRetention({ retentionSummary, winnerRetention, los
           </div>
         </>
       )}
+
+      <AnalysisSummary
+        title="วิเคราะห์ Winner Retention"
+        methodology="เปรียบเทียบ<strong>ผู้ชนะในเลือกตั้ง 66</strong> กับ <strong>ผลเลือกตั้ง 69</strong> ในเขตเดียวกัน — ดูว่าพรรคไหนรักษาเขตเดิมได้ (retention), พรรคไหนได้เขตเพิ่ม, และผู้ชนะเดิมที่<strong>แพ้</strong>ในครั้งนี้มีใครบ้าง"
+        findings={[
+          `จากทั้งหมด <strong>${summary.totalAreas}</strong> เขต มี <strong>${summary.switchedCandidates || 0}</strong> ผู้สมัครที่ย้ายพรรค`,
+          `ผู้ชนะ 66 ที่แพ้ในปี 69: <strong>${lost66Winners.length}</strong> คน`,
+          `พรรคที่ retention สูง = ฐานเสียงมั่นคง | Net > 0 = ขยายฐานได้`,
+          `ผู้ชนะ 66 ที่ย้ายพรรคแล้วแพ้ อาจเสียฐานเสียงจากการย้าย`,
+        ]}
+        interpretation="Retention rate สูงบ่งชี้ว่าพรรคมี<strong>ฐานเสียงที่มั่นคง</strong>ในพื้นที่ — ส่วนพรรคที่เสียเขตมากอาจเกิดจาก (1) <strong>กระแสการเมืองเปลี่ยน</strong>, (2) <strong>ผู้สมัครเปลี่ยน</strong>, หรือ (3) <strong>คู่แข่งแข็งแกร่งขึ้น</strong> ผู้ชนะ 66 ที่ย้ายพรรคแล้วแพ้ แสดงว่า 'ฐานเสียง' อาจผูกกับ<strong>พรรคมากกว่าตัวบุคคล</strong>"
+        limitation="ข้อมูลเปรียบเทียบระหว่างเลือกตั้ง 66 กับ 69 อาจมีเขตที่ถูก<strong>ปรับเขตใหม่ (redistricting)</strong> ทำให้เปรียบเทียบโดยตรงไม่ได้ 100% — นอกจากนี้บางเขตอาจมีผู้สมัครใหม่ทั้งหมดจึงไม่มี incumbent advantage"
+      />
     </div>
   )
 }

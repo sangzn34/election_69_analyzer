@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { Flame, Mountain, Flag, Trophy, Medal } from 'lucide-react'
 import type { WinningMarginItem } from '../types'
+import AnalysisSummary from './AnalysisSummary'
 
 interface TooltipProps {
   active?: boolean
@@ -134,6 +135,19 @@ export default function WinningMargin({ data }: Props) {
           </tbody>
         </table>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Winning Margin"
+        methodology="คำนวณ<strong>ส่วนต่างคะแนน (margin)</strong> ระหว่างผู้สมัครอันดับ 1 กับอันดับ 2 ในแต่ละเขต ทั้งจำนวนคะแนนและ % — เขตที่ margin ต่ำ (<5%) ถือว่าสูสีมาก ส่วนเขตที่ margin สูง (>50%) ถือว่าชนะขาดลอย"
+        findings={[
+          `จากทั้งหมด <strong>${data.length}</strong> เขต Margin เฉลี่ย = <strong>${stats.avgMargin.toFixed(1)}%</strong>`,
+          `เขตสูสีมาก (margin <5%): <strong>${stats.under5}</strong> เขต — ทุกคะแนนมีผลต่อชัยชนะ`,
+          `เขตสูสี (margin <10%): <strong>${stats.under10}</strong> เขต`,
+          `เขตชนะขาดลอย (margin >50%): <strong>${stats.over50}</strong> เขต — เป็นฐานเสียงที่มั่นคง`,
+        ]}
+        interpretation="เขตที่สูสีมากเป็น <strong>swing areas</strong> ที่การซื้อเสียงแม้เพียงเล็กน้อยก็อาจ<strong>พลิกผล</strong>ได้ — ควรจับตาเป็นพิเศษ ส่วนเขตที่ชนะขาดลอย มักเป็น<strong>ฐานที่มั่น</strong>ของพรรค หรืออาจเป็นเขตที่มี<strong>อิทธิพลท้องถิ่น</strong>สูงจนคู่แข่งไม่สามารถแข่งขันได้"
+        limitation="Margin เป็นตัวชี้วัดความ competitive ของเขต ไม่ได้บ่งชี้ว่ามีการทุจริตโดยตรง — เขตที่สูสีอาจสูสีเพราะ<strong>การแข่งขันที่เป็นธรรม</strong>ก็ได้ และเขตที่ชนะขาดลอยอาจมาจาก<strong>ฐานเสียงแท้จริง</strong>ของพรรค"
+      />
     </div>
   )
 }

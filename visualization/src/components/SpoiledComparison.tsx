@@ -8,6 +8,7 @@ import {
 import { AlertTriangle, BarChart3, Table2, Info, GitCompareArrows, Microscope, MapPin, Users, ChevronUp, ChevronDown, Vote, ClipboardList, Trophy, CircleDot } from 'lucide-react'
 import PartyLogo from './PartyLogo'
 import type { SpoiledComparisonItem, SpoiledComparisonMeta, ElectionComparison, NameToCodeMap } from '../types'
+import AnalysisSummary from './AnalysisSummary'
 
 type ViewMode = 'scatter' | 'bar' | 'table' | 'province' | 'party'
 
@@ -742,7 +743,19 @@ export default function SpoiledComparison({ data, meta, nameToCodeMap, compariso
           </div>
         </div>
       )}
+
+      <AnalysisSummary
+        title="วิเคราะห์บัตรเสีย (Spoiled Ballot)"
+        methodology="เปรียบเทียบ<strong>อัตราบัตรไม่สมบูรณ์ (non-valid %)</strong> ของการเลือกตั้ง ส.ส. กับ <strong>การลงประชามติ</strong>ในเขตเดียวกัน — Δ = % บัตรเสียเลือกตั้ง − % บัตรเสียประชามติ ถ้า Δ สูง แสดงว่าเลือกตั้ง ส.ส. มีบัตรเสียมากกว่าประชามติอย่างผิดปกติ เขตที่เกิน <strong>median + 2σ</strong> ถือเป็น outlier"
+        findings={[
+          `วิเคราะห์จาก <strong>${meta.totalAreas}</strong> เขตเลือกตั้ง`,
+          `% บัตรไม่สมบูรณ์เฉลี่ย (สส.): <strong>${meta.avgMpNonValid.toFixed(2)}%</strong> | ประชามติ: <strong>${meta.avgRefNonValid.toFixed(2)}%</strong>`,
+          `Δ เฉลี่ย = <strong>${(meta.avgMpNonValid - meta.avgRefNonValid).toFixed(2)}%</strong> | จำนวน outlier: <strong>${meta.outlierCount}</strong> เขต`,
+          `เขตที่มี Δ สูงมากอาจมีปัจจัยพิเศษ เช่น จำนวนผู้สมัครมาก, บัตรซับซ้อน, หรือปัญหาในหน่วยเลือกตั้ง`,
+        ]}
+        interpretation="บัตรเสียในเลือกตั้ง ส.ส. มักสูงกว่าประชามติอยู่แล้ว เพราะบัตรมี<strong>ผู้สมัครหลายคน</strong>ทำให้กรอกผิดง่ายกว่า — แต่ถ้าส่วนต่างสูงผิดปกติ อาจบ่งชี้ (1) <strong>การทำบัตรเสียจงใจ</strong>เพื่อลดคะแนนคู่แข่ง, (2) <strong>ผู้ลงคะแนนสับสน</strong>กับระบบบัตรที่ซับซ้อน, หรือ (3) <strong>ปัญหาในกระบวนการ</strong>เลือกตั้งของเขตนั้น"
+        limitation="ประชามติและการเลือกตั้ง ส.ส. มี<strong>รูปแบบบัตรที่แตกต่างกัน</strong>โดยธรรมชาติ — ส่วนต่างบางส่วนเป็นเรื่องปกติ ไม่ใช่สัญญาณทุจริตทั้งหมด นอกจากนี้ประชามติอาจจัดในช่วงเวลาต่างกันซึ่งมี context ทางการเมืองต่างกัน"
+      />
     </div>
   )
 }
-

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import type { BallotImbalance as BallotImbalanceData, BallotImbalanceAreaItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─── Helpers ─── */
 function fmt(n: number) { return n.toLocaleString('th-TH') }
@@ -690,6 +691,19 @@ export default function BallotImbalanceView({ data, nameToCodeMap }: Props) {
           </div>
         </div>
       )}
+
+      <AnalysisSummary
+        title="วิเคราะห์บัตรเขย่ง (Ballot Imbalance)"
+        methodology="เปรียบเทียบ<strong>จำนวนคะแนนรวมบัตร ส.ส. เขต (MP)</strong> กับ <strong>บัตรบัญชีรายชื่อ (PL)</strong> ในแต่ละเขต — ค่าส่วนต่าง (diff%) = (MP − PL) / ค่าเฉลี่ย × 100 ถ้าทุกคนกรอกบัตรทั้ง 2 ใบ จำนวนรวมควรใกล้เคียงกัน เขตที่มี diff% สูงเกิน <strong>mean ± 2σ</strong> ถือเป็น outlier"
+        findings={[
+          `วิเคราะห์จาก <strong>${meta.totalAreas}</strong> เขต ค่า diff% เฉลี่ย = <strong>${meta.meanDiffPercent.toFixed(2)}%</strong> (σ = ${meta.stdDiffPercent.toFixed(2)}%)`,
+          `เขต outlier: <strong>${meta.outlierCount}</strong> เขต (${((meta.outlierCount / meta.totalAreas) * 100).toFixed(1)}%)`,
+          `ทิศทาง: MP > PL = <strong>${perArea.filter(a => a.diff > 0).length}</strong> เขต | PL > MP = <strong>${perArea.filter(a => a.diff < 0).length}</strong> เขต`,
+          `เขตที่มี diff% สูงสุด: <strong>${topOutliers[0]?.fullName || '-'}</strong> (${topOutliers[0]?.diffPct.toFixed(2) || 0}%)`,
+        ]}
+        interpretation="Ballot Imbalance บ่งชี้ว่ามีผู้ลงคะแนน<strong>ไม่กรอกบัตรใดบัตรหนึ่ง</strong> หรืออาจมี<strong>บัตรเสียจำนวนต่างกัน</strong>ระหว่าง MP กับ PL — เขตที่ MP >> PL อาจมีการ<strong>ซื้อเสียงเฉพาะบัตร ส.ส.</strong> ทำให้คนกรอกบัตร ส.ส. แต่ไม่ใส่ใจบัตร PL ในทางกลับกัน PL >> MP อาจเกิดจากผู้สมัครบางคน<strong>ถูกตัดสิทธิ์</strong>ทำให้บัตร MP เสียมากกว่า"
+        limitation="ส่วนต่างอาจเกิดจากสาเหตุธรรมชาติ เช่น บัตรเสียจำนวนต่างกัน, ผู้ลงคะแนนจงใจไม่กรอกบัตรใดบัตรหนึ่ง, หรือปัญหาในการนับคะแนน — ค่า diff% ที่ต่ำ (<2%) ถือว่าอยู่ในเกณฑ์ปกติ"
+      />
     </div>
   )
 }

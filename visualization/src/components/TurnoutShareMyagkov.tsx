@@ -8,6 +8,7 @@ import {
 import { Microscope, AlertTriangle, BarChart3, Users, Filter } from 'lucide-react'
 import type { MyagkovAnalysis, MyagkovPoint, MyagkovPartyCorrelation, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─── Tooltip ─── */
 interface ScatterTooltipProps {
@@ -513,6 +514,19 @@ export default function TurnoutShareMyagkov({ data, nameToCodeMap }: Props) {
         Myagkov, M., Ordeshook, P. C., & Shakin, D. (2009). <em>The Forensics of Election Fraud: Russia and Ukraine.</em> Cambridge University Press.
         — โมเดลนี้ใช้วิเคราะห์เลือกตั้งรัสเซียและยูเครน โดยดูว่า Turnout ที่สูงขึ้นสัมพันธ์กับ vote share ของพรรคใดพรรคหนึ่งอย่างผิดปกติหรือไม่
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Myagkov Model"
+        methodology="ใช้โมเดล <strong>Myagkov-Ordeshook-Shakin</strong> วิเคราะห์ความสัมพันธ์ระหว่าง <strong>% Turnout</strong> กับ <strong>% Vote Share ของพรรคผู้ชนะ</strong> ในแต่ละเขต — ในการเลือกตั้งที่โปร่งใส ไม่ควรมี positive correlation ที่แข็งแกร่งระหว่างสองตัวแปรนี้ แต่ถ้ามีการ ballot stuffing จะเห็น turnout สูง → vote share ของพรรคเดียวเพิ่มขึ้น (positive slope)"
+        findings={[
+          `วิเคราะห์จาก <strong>${data.points.length}</strong> เขตเลือกตั้ง`,
+          `พรรคที่มี positive correlation สูง (turnout ↑ = vote share ↑) อาจได้ประโยชน์จาก turnout ที่ผิดปกติ`,
+          `พรรคที่มี negative correlation (turnout ↑ = vote share ↓) เป็นรูปแบบปกติ — เสียงกระจายไปพรรคอื่นเมื่อคนมาลงคะแนนมากขึ้น`,
+          `ค่า R² ที่สูง (>0.3) บ่งชี้ว่า relationship มีนัยสำคัญ ไม่ใช่แค่ noise`,
+        ]}
+        interpretation="Positive correlation ระหว่าง turnout กับ vote share ของพรรคเดียวเป็น<strong>สัญญาณเตือน</strong>ในทฤษฎี election forensics — อาจบ่งชี้การ<strong>ระดมคนมาลงคะแนน (mobilization)</strong> หรือ <strong>ballot stuffing</strong> อย่างไรก็ตาม ในบริบทไทยอาจเกิดจากฐานเสียงที่แข็งแกร่งของพรรคบางพรรคในพื้นที่เฉพาะ"
+        limitation="โมเดล Myagkov ออกแบบมาสำหรับเลือกตั้งรัสเซีย/ยูเครน ซึ่งมีบริบทแตกต่างจากไทย — positive correlation อาจเกิดจาก demographic factors (เช่น เขตเมือง vs ชนบท) ไม่ใช่การทุจริตเสมอไป ควรใช้ร่วมกับหลักฐานอื่น"
+      />
     </div>
   )
 }

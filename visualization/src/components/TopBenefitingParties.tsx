@@ -8,6 +8,7 @@ import {
 import { Target, Info, Hash, Filter } from 'lucide-react'
 import type { TargetPartyCount, VoteBuyingItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─── Helpers ─── */
 function fmt(n: number) { return n.toLocaleString('th-TH') }
@@ -446,6 +447,18 @@ export default function TopBenefitingParties({ data, vba, nameToCodeMap }: Props
           })()}
         </ul>
       </div>
+
+      <AnalysisSummary
+        methodology="วิเคราะห์ปรากฏการณ์ 'เบอร์ตรง' โดยเปรียบเทียบเบอร์ผู้สมัคร ส.ส.เขตผู้ชนะ กับเบอร์พรรคบัญชีรายชื่อ — หากเบอร์ตรงกันแต่เป็นคนละพรรค แสดงว่าผู้เลือกตั้งที่กาเบอร์เดียวกันทั้งสองใบอาจทำให้พรรค PL ได้คะแนนโดยไม่ตั้งใจ (ส้มหล่น)"
+        findings={[
+          `จาก 400 เขตเลือกตั้ง มี <strong>${totalSuspicious}</strong> เขต (${(totalSuspicious / 4).toFixed(1)}%) ที่เกิดปรากฏการณ์เบอร์ตรงข้ามพรรค`,
+          `พรรคอันดับ 1 ที่ได้ประโยชน์คือ <strong>${top10[0]?.partyName || '-'}</strong> (เบอร์ ${top10[0]?.partyNum}) ได้ประโยชน์จาก ${top10[0]?.totalAreas || 0} เขต รวมคะแนน PL ${fmt(top10[0]?.totalPlVotes || 0)}`,
+          `คะแนน PL รวมที่ได้จากเบอร์ตรงทั้ง Top 10 = <strong>${fmt(top10.reduce((s, g) => s + g.totalPlVotes, 0))}</strong> คะแนน — จำนวนนี้อาจมีผลต่อการคำนวณ ส.ส. บัญชีรายชื่อ`,
+          `พรรคเล็กที่ไม่มีฐานเสียง ส.ส.เขต กลับได้คะแนน PL จำนวนมาก ซึ่งผิดปกติสำหรับพรรคระดับนี้`,
+        ]}
+        interpretation="ปรากฏการณ์เบอร์ตรงเป็นช่องโหว่ของระบบเลือกตั้งที่ผู้สมัคร ส.ส.เขต มีเบอร์ประจำตัว ส่วนพรรค PL มีเบอร์พรรค — เมื่อเบอร์ตรงกันข้ามพรรค ผู้เลือกตั้งที่ 'กาเบอร์เดียวกันทั้งสองใบ' จะทำให้พรรค PL ที่เบอร์ตรงได้คะแนนฟรี ผลลัพธ์ชี้ว่าพรรคเล็กหลายพรรคได้คะแนน PL สูงผิดปกติจากปรากฏการณ์นี้ ซึ่งอาจบิดเบือนผลการจัดสรรที่นั่ง ส.ส.บัญชีรายชื่อ"
+        limitation="ไม่สามารถพิสูจน์ได้ว่าผู้เลือกตั้งตั้งใจกาเบอร์เดียวกันจริงหรือไม่ — ข้อมูลเป็นระดับเขตรวม (aggregate) ไม่ใช่ระดับบุคคล การวิเคราะห์นี้แสดงความเป็นไปได้เชิงสถิติ ไม่ใช่หลักฐานเชิงพฤติกรรม"
+      />
     </div>
   )
 }

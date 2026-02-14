@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { TrendingUp } from 'lucide-react'
 import type { RankDistributionItem } from '../types'
+import AnalysisSummary from './AnalysisSummary'
 
 const PARTY_COLORS: Record<number, { name: string; color: string }> = {
   1: { name: 'ไทยทรัพย์ทวี', color: '#e91e63' },
@@ -96,6 +97,18 @@ export default function RankDistribution({ data }: Props) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์การกระจายอันดับ"
+        methodology="วิเคราะห์<strong>อันดับที่ ส.ส. ผู้ชนะเบอร์นั้นๆ ได้รับ</strong>ในแต่ละเขต — เช่น ผู้ชนะที่ได้เบอร์ 1 จะได้อันดับที่เท่าไหร่ในเขตต่างๆ ข้อมูลนี้ช่วยดูว่าเบอร์ที่ได้ มี<strong>ผลต่ออันดับ</strong>ในการเลือกตั้งหรือไม่"
+        findings={[
+          `กำลังแสดงข้อมูลของเบอร์ <strong>${selectedParty}</strong> (${PARTY_COLORS[selectedParty]?.name || '-'})`,
+          `จำนวนเขตที่มีผู้สมัครเบอร์นี้เป็น 'จุดสังเกต' (ส.ส. ผู้ชนะ) จะแสดงเป็นสีแดง`,
+          `ถ้าเบอร์ใดเบอร์หนึ่งชนะ<strong>อันดับที่ 1</strong> เป็นจำนวนมากผิดปกติ อาจบ่งชี้ถึง ballot number effect`,
+        ]}
+        interpretation="ในทฤษฎีซื้อเสียง 'ฝากเบอร์' ผู้ซื้อเสียงจะบอกหมายเลขให้จำ — ถ้าเบอร์ที่ถูก 'ฝาก' ได้รับอันดับสูงอย่างสม่ำเสมอในหลายเขต อาจเป็น<strong>สัญญาณที่น่าสนใจ</strong> แต่ต้องพิจารณาว่าเบอร์นั้นอาจเป็นพรรคใหญ่ที่มีผู้สมัครแข็งแกร่งอยู่แล้ว"
+        limitation="จำนวนเบอร์ที่แสดง (1-5) ไม่ครอบคลุมทุกเบอร์ในการเลือกตั้ง — ผลลัพธ์ขึ้นอยู่กับว่าพรรคใดได้เบอร์ใดในแต่ละเขต ซึ่งเป็นการจับสลาก"
+      />
     </div>
   )
 }

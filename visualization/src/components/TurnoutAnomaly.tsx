@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import { BarChart3, Microscope, TrendingDown, CircleDot } from 'lucide-react'
 import type { TurnoutAnomalyItem } from '../types'
+import AnalysisSummary from './AnalysisSummary'
 
 interface TooltipProps {
   active?: boolean
@@ -149,6 +150,19 @@ export default function TurnoutAnomaly({ data }: Props) {
           </tbody>
         </table>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Turnout Anomaly"
+        methodology="คำนวณ<strong>อัตราการมาใช้สิทธิ์ (turnout %)</strong> ในแต่ละเขตเลือกตั้ง แล้วเปรียบเทียบกับค่าเฉลี่ยทั้งประเทศ (<strong>${avgTurnout.toFixed(1)}%</strong>) — เขตที่มีส่วนเบี่ยงเบน (deviation) สูงหรือต่ำผิดปกติจะถูก highlight เป็นจุดสังเกต"
+        findings={[
+          `ค่าเฉลี่ย turnout ทั้งประเทศ = <strong>${avgTurnout.toFixed(1)}%</strong> จากทั้งหมด <strong>${data.length}</strong> เขต`,
+          `เขตที่มี turnout สูงกว่าค่าเฉลี่ย +10% มี <strong>${data.filter(d => d.deviation > 10).length}</strong> เขต — ถือว่าสูงผิดปกติ`,
+          `เขตที่มี turnout ต่ำกว่าค่าเฉลี่ย -10% มี <strong>${data.filter(d => d.deviation < -10).length}</strong> เขต`,
+          `เขต turnout สูงสุด: <strong>${highTurnout[0]?.areaName || '-'}</strong> (${highTurnout[0]?.turnoutPercent.toFixed(1) || 0}%) ส่วนต่ำสุด: <strong>${lowTurnout[0]?.areaName || '-'}</strong> (${lowTurnout[0]?.turnoutPercent.toFixed(1) || 0}%)`,
+        ]}
+        interpretation="Turnout ที่สูงผิดปกติอาจบ่งชี้การ<strong>ระดมคน</strong>มาลงคะแนน (ballot stuffing) หรือพื้นที่ที่มีการแข่งขันดุเดือด ส่วน turnout ต่ำผิดปกติอาจมาจากปัจจัยเช่น สภาพอากาศ, การเมืองท้องถิ่น, หรือผู้มีสิทธิ์ย้ายที่ไม่ได้กลับมาลงคะแนน — ควรพิจารณาร่วมกับพรรคผู้ชนะในเขตนั้น"
+        limitation="ข้อมูล turnout เป็นระดับเขตเลือกตั้ง ไม่ได้ลงลึกระดับหน่วยเลือกตั้ง (polling station) — ค่าเฉลี่ยระดับเขตอาจซ่อนความผิดปกติในบางหน่วย นอกจากนี้ เขตที่มีผู้มีสิทธิ์น้อยจะมี variance สูงตามธรรมชาติ"
+      />
     </div>
   )
 }

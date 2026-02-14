@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import type { EnsembleAnalysisItem, EnsemblePartySummaryItem, EnsembleMeta, NameToCodeMap, BenfordDigitItem, NullModelAnalysis, KlimekAnalysis, LastDigitAnalysis, SecondDigitBenfordAnalysis } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─── Tooltip: Area Detail ─── */
 interface AreaTooltipProps {
@@ -2155,6 +2156,19 @@ export default function EnsembleAnalysis({ data, partySummary, meta, nameToCodeM
           — HH hotspot +10%, suspect +5%, elevated +3%
         </div>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Ensemble (รวมทุกทฤษฎี)"
+        methodology="รวม<strong>หลายทฤษฎี forensic</strong> (Anomaly Ratio, Vote Splitting, Ballot Imbalance, Myagkov, Benford's Law, Null Model, Klimek, Last Digit Test ฯลฯ) เข้าด้วยกันโดยใช้ <strong>Entropy Weight Method</strong> คำนวณน้ำหนักอัตโนมัติ แล้วใช้ <strong>Moran's I</strong> วิเคราะห์ spatial autocorrelation และ <strong>Semi-supervised Labels</strong> จับ edge cases"
+        findings={[
+          `วิเคราะห์จาก <strong>${meta?.totalAreas || data.length}</strong> เขตเลือกตั้ง ด้วย 10+ features/theories`,
+          `พรรคที่มี ensemble score เฉลี่ยสูงที่สุดคือจุดสังเกตที่ควรตรวจสอบเพิ่ม`,
+          `HH Hotspot (High-High cluster) = กลุ่มเขตที่มี score สูงอยู่รวมกัน → pattern เชิงภูมิศาสตร์`,
+          `Final score ผ่าน Population Weight + Spatial Boost + Label Boost เพื่อลด false positive`,
+        ]}
+        interpretation="Ensemble score สูง<strong>ไม่ได้หมายความว่ามีการทุจริต</strong>อย่างแน่นอน แต่บ่งชี้ว่าเขตนั้นมี<strong>ความผิดปกติทางสถิติ</strong>หลายมิติพร้อมกัน — เมื่อหลายทฤษฎีชี้ไปในทิศทางเดียวกัน ความน่าเชื่อถือของสัญญาณจะสูงขึ้น ผลลัพธ์ควรใช้เป็น<strong>จุดเริ่มต้น</strong>ในการตรวจสอบเชิงลึก ไม่ใช่ข้อสรุปสุดท้าย"
+        limitation="แต่ละทฤษฎีมีข้อจำกัดของตัวเอง (ดูรายละเอียดในแต่ละส่วน) — การรวมกันอาจ<strong>ขยายหรือหักล้าง</strong>สัญญาณผิดปกติ Entropy Weight Method ให้น้ำหนักตาม variance ไม่ใช่ตามความสำคัญทางทฤษฎี และ spatial analysis ใช้ adjacency matrix ที่อาจไม่สมบูรณ์"
+      />
     </div>
   )
 }

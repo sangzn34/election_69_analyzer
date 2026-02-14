@@ -8,6 +8,7 @@ import {
 import { ArrowRight, ArrowLeftRight, Shield, Filter, Grid3X3, TrendingUp, ClipboardList, Search, Lightbulb, Repeat } from 'lucide-react'
 import type { EcologicalInference, EcoRetention, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─── Views ─── */
 type ViewMode = 'matrix' | 'retention' | 'changed'
@@ -456,6 +457,19 @@ export default function EcologicalInferenceView({
           </li>
         </ul>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Ecological Inference"
+        methodology="ใช้เทคนิค <strong>Ecological Inference</strong> ประมาณการว่าผู้ลงคะแนนที่เลือกพรรค A ในปี 66 ไป<strong>ลงคะแนนให้พรรคใดในปี 69</strong> — สร้าง transition matrix จากการเปรียบเทียบสัดส่วนคะแนนรายเขตระหว่างสองสมัย และคำนวณ retention rate (% ที่ยังเลือกพรรคเดิม)"
+        findings={[
+          `วิเคราะห์จาก <strong>${meta.totalAreas}</strong> เขตเลือกตั้ง ทั้งเลือกตั้ง 66 และ 69`,
+          `เขตที่เปลี่ยนพรรคผู้ชนะ: <strong>${meta.changedAreas}</strong> เขต (<strong>${meta.changedPct}%</strong>)`,
+          `Retention rate สูง = พรรครักษาฐานเสียงได้ดี | Net > 0 = ได้เขตเพิ่ม`,
+          `Transition matrix แสดงกระแสการเปลี่ยนย้ายพรรค — flow สูง = มีคนย้ายข้างจำนวนมาก`,
+        ]}
+        interpretation="Transition matrix ช่วยเข้าใจ<strong>กระแสการเมือง</strong>: พรรคที่มี retention สูงแสดงว่า<strong>ฐานเสียงมั่นคง</strong> ส่วนพรรคที่เสีย flow มากอาจเป็นเพราะ<strong>ผู้นำเปลี่ยน, นโยบายเปลี่ยน, หรือคู่แข่งที่แข็งแกร่งขึ้น</strong> — เขตที่เปลี่ยนพรรคมากอาจเป็น swing areas ที่ควรจับตา"
+        limitation="Ecological Inference เป็นการ<strong>ประมาณ</strong>จากข้อมูลระดับเขต (aggregate) ไม่ใช่ข้อมูลระดับบุคคล — ผลลัพธ์อาจมี ecological fallacy (สรุปพฤติกรรมบุคคลจากข้อมูลกลุ่ม) ความแม่นยำขึ้นอยู่กับสมมติฐานของโมเดล"
+      />
     </div>
   )
 }

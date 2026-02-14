@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { Zap } from 'lucide-react'
 import type { VoteAnomalyItem } from '../types'
+import AnalysisSummary from './AnalysisSummary'
 
 interface CustomTooltipProps {
   active?: boolean
@@ -134,6 +135,19 @@ export default function VoteAnomaly({ data }: Props) {
           </tbody>
         </table>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ Anomaly Score"
+        methodology="เปรียบเทียบคะแนนบัญชีรายชื่อ (PL) ของ<strong>พรรคที่มีเบอร์ตรงกับ ส.ส. ผู้ชนะ</strong> กับ <strong>มัธยฐาน (median)</strong> ของคะแนน PL ของพรรคเล็กอื่นๆ ในเขตเดียวกัน — ค่า Anomaly Ratio = คะแนน PL พรรคส้มหล่น ÷ มัธยฐานพรรคเล็ก ถ้าค่าสูง (เช่น >5x) แปลว่าพรรคนั้นได้คะแนน PL สูงกว่าพรรคเล็กทั่วไปอย่างผิดปกติ"
+        findings={[
+          `พบ <strong>${data.length}</strong> เขตที่มีข้อมูล anomaly ratio สำหรับวิเคราะห์`,
+          `เขตที่มี anomaly สูงสุดคือ <strong>${data[0]?.areaName || '-'}</strong> (${data[0]?.anomalyRatio || 0}x) พรรคส้มหล่น: ${data[0]?.targetPartyName || '-'}`,
+          `เขตที่มี anomaly ratio ≥10x มี <strong>${data.filter(d => d.anomalyRatio >= 10).length}</strong> เขต — ถือว่าสูงผิดปกติอย่างมีนัย`,
+          `พรรค ส.ส. ผู้ชนะที่มี anomaly ratio สูงบ่อยที่สุดอาจชี้ถึงรูปแบบการ "ส้มหล่น" ที่เป็นระบบ`,
+        ]}
+        interpretation="เขตที่มี anomaly ratio สูง บ่งชี้ว่ามีผู้ลงคะแนน PL ให้พรรคที่มี<strong>เบอร์ตรงกับ ส.ส. ผู้ชนะ</strong>มากกว่าปกติ — อาจเกิดจากการซื้อเสียงแบบ 'ฝากเบอร์' หรือความสับสนของผู้ลงคะแนนที่จำเบอร์จากบัตรเลือก ส.ส. ไปใส่ในบัตร PL ด้วย อย่างไรก็ตามบางเขตอาจมีเหตุผลอื่น เช่น พรรคนั้นมีฐานเสียง PL ที่แข็งแกร่งจริง"
+        limitation="การวิเคราะห์ใช้มัธยฐานพรรคเล็กเป็น baseline ซึ่งอาจไม่เหมาะกับทุกเขต — เขตที่มีพรรคเล็กน้อยมากอาจมี median ที่บิดเบือน นอกจากนี้ anomaly ratio สูงไม่ได้หมายความว่ามีการทุจริตเสมอไป ต้องพิจารณาร่วมกับบริบทอื่นๆ"
+      />
     </div>
   )
 }

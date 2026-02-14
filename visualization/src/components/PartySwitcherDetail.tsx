@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import type { WinnerRetentionItem, AreaDetail, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ────────────────── Derived type for display ────────────────── */
 interface SwitchedMP {
@@ -466,6 +467,18 @@ export default function PartySwitcherDetail({ winnerRetention, areaDetails, name
           </table>
         </div>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์เขตที่พรรคเปลี่ยน"
+        methodology="วิเคราะห์เขตที่<strong>พรรคผู้ชนะเปลี่ยน</strong>จากเลือกตั้ง 66 ไป 69 — แยกว่าผู้ชนะใหม่เป็น 'ส.ส. เดิมที่ย้ายพรรค' หรือ 'หน้าใหม่' ดู flow ว่าพรรคไหนแย่งเขตจากพรรคไหนมากที่สุด"
+        findings={[
+          `แสดงเขตที่เปลี่ยนพรรคผู้ชนะระหว่างเลือกตั้ง 66 กับ 69`,
+          `แบ่งเป็น: ส.ส. เดิมย้ายพรรคแล้วชนะ vs หน้าใหม่ชนะ`,
+          `พรรคที่แย่งเขตได้มากที่สุดแสดงให้เห็น<strong>กระแสการเมืองที่เปลี่ยนไป</strong>`,
+        ]}
+        interpretation="เขตที่เปลี่ยนพรรคผู้ชนะเป็น<strong>สนามรบทางการเมือง</strong>ที่น่าจับตา — ถ้า ส.ส. เดิมย้ายพรรคแล้วยังชนะ แสดงว่าฐานเสียงติดตัวบุคคล ถ้าหน้าใหม่จากพรรคใหม่ชนะ แสดงว่ากระแสพรรคแรงกว่าตัวบุคคล"
+        limitation="ข้อมูลอาจมีเขตที่ถูกปรับเขตใหม่ ทำให้เปรียบเทียบไม่ตรง 1:1 — นอกจากนี้สาเหตุการเปลี่ยนพรรคผู้ชนะอาจซับซ้อนกว่าแค่ 'กระแส' เช่น ผู้สมัครเดิมไม่ลง, คดีความ, หรือการเมืองท้องถิ่น"
+      />
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import type { MpPlComparison as MpPlComparisonData, MpPlPartySummary, MpPlAreaItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─── Helpers ─── */
 function fmt(n: number) { return n.toLocaleString('th-TH') }
@@ -600,6 +601,19 @@ export default function MpPlComparison({ data, nameToCodeMap }: Props) {
           )}
         </div>
       )}
+
+      <AnalysisSummary
+        title="วิเคราะห์ MP vs PL"
+        methodology="รวมคะแนนเสียง<strong>ระบบ ส.ส. เขต (MP)</strong> กับ <strong>ระบบบัญชีรายชื่อ (PL)</strong> ของแต่ละพรรคในแต่ละเขต แล้วคำนวณ<strong>ส่วนต่าง (diff = PL − MP)</strong> — พรรคที่ได้ PL มากกว่า MP อย่างมากถือว่าเป็น 'ส้มหล่น' (ได้คะแนนพรรคเพิ่มโดยไม่ได้มี ส.ส. เขตที่แข็งแกร่ง)"
+        findings={[
+          `วิเคราะห์จาก <strong>${meta.totalAreas}</strong> เขตเลือกตั้ง`,
+          `พรรคที่ PL > MP (ส้มหล่น): <strong>${meta.partiesPlHigher}</strong> พรรค | MP > PL: <strong>${meta.partiesPlLower}</strong> พรรค`,
+          `ส้มหล่นสูงสุด: <strong>${meta.topGainer}</strong> (PL สูงกว่า MP มากที่สุด)`,
+          `Top 10 ส้มหล่น: ${top10Gainers.slice(0, 3).map(p => `<strong>${p.partyName}</strong> (+${fmt(p.diff)})`).join(', ')}`,
+        ]}
+        interpretation="พรรคที่มี PL >> MP อย่างชัดเจนแสดงว่า 'แบรนด์พรรค' แข็งกว่า 'ตัวผู้สมัคร' — ผู้ลงคะแนนเลือกพรรคในบัตร PL แต่ไม่เลือก ส.ส. ของพรรคนั้น ในทางกลับกัน พรรคที่ MP >> PL แสดงว่า<strong>ตัวผู้สมัคร</strong>มีฐานเสียงส่วนตัวที่แข็งกว่าพรรค — ซึ่งอาจเกี่ยวข้องกับ<strong>เครือข่ายท้องถิ่น</strong>หรือ<strong>การซื้อเสียง</strong>"
+        limitation="ข้อมูลเป็นผลรวมระดับเขตและระดับพรรค ไม่ได้ลงลึกระดับผู้สมัครรายบุคคล — พรรคที่มีผู้สมัครน้อยเขตจะมีตัวเลขต่ำเมื่อเทียบกับพรรคใหญ่ ควรดู % diff ร่วมกับจำนวนเขตที่ลงสมัคร"
+      />
     </div>
   )
 }

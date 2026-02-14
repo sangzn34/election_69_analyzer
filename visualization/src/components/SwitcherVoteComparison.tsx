@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import type { SwitcherVoteComparisonItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 /* ─────────── helpers ─────────── */
 function fmt(n: number) {
@@ -380,6 +381,19 @@ export default function SwitcherVoteComparison({ data, nameToCodeMap }: Props) {
         <strong>หมายเหตุ:</strong> ข้อมูลมาจาก API ผลเลือกตั้ง 66 ของ ThaiPBS (top-3 ผู้สมัครต่อเขต) เทียบกับผล 69 ของ กกต.
         จับคู่โดย ชื่อ-นามสกุล + เขตเดียวกัน · ค่า % คำนวณจากคะแนนต่อผู้มาใช้สิทธิ์ในเขตนั้น
       </p>
+
+      <AnalysisSummary
+        title="วิเคราะห์คะแนนผู้ย้ายพรรค"
+        methodology="เปรียบเทียบ<strong>คะแนนเสียง</strong>ของผู้สมัครที่ย้ายพรรค ระหว่างเลือกตั้ง 66 กับ 69 — คำนวณ vote delta (คะแนน 69 − คะแนน 66) และ % delta เพื่อดูว่าการย้ายพรรคส่งผลต่อคะแนนอย่างไร"
+        findings={[
+          `วิเคราะห์ผู้สมัครที่ย้ายพรรค <strong>${data.length}</strong> คน`,
+          `ผู้ย้ายที่ได้คะแนนเพิ่ม: <strong>${data.filter(d => d.voteDelta > 0).length}</strong> คน | ได้คะแนนลด: <strong>${data.filter(d => d.voteDelta < 0).length}</strong> คน`,
+          `ค่า delta เฉลี่ย: <strong>${data.length > 0 ? (data.reduce((s, d) => s + d.voteDelta, 0) / data.length).toFixed(0) : 0}</strong> คะแนน`,
+          `ผู้ย้ายที่คะแนนลดมากอาจเสียฐานเสียงจากพรรคเดิม`,
+        ]}
+        interpretation="ผู้สมัครที่ย้ายพรรคแล้วได้คะแนน<strong>เพิ่ม</strong>แสดงว่า<strong>พรรคใหม่มีแบรนด์แข็ง</strong>หรือผู้สมัครมีฐานเสียงส่วนตัวที่ติดตามไปด้วย — ส่วนผู้ที่คะแนน<strong>ลด</strong>อาจเป็นเพราะฐานเสียงยึดติดกับ<strong>พรรคเดิม</strong>มากกว่าตัวบุคคล ข้อมูลนี้ช่วยเข้าใจว่า 'ฐานเสียง' ผูกกับพรรคหรือบุคคลมากกว่า"
+        limitation="เปรียบเทียบข้ามสมัย ซึ่งมีปัจจัยอื่นเปลี่ยนไปด้วย เช่น จำนวนผู้มีสิทธิ์, คู่แข่ง, กระแสการเมือง — ข้อมูล 66 มาจาก ThaiPBS API (top-3) จึงอาจไม่ครบทุกผู้สมัคร"
+      />
     </section>
   )
 }

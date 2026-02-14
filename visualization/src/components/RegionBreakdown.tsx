@@ -7,6 +7,7 @@ import {
 import { Globe } from 'lucide-react'
 import type { RegionSummaryItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 interface CustomTooltipProps {
   active?: boolean
@@ -136,6 +137,18 @@ export default function RegionBreakdown({ data, nameToCodeMap }: Props) {
           </div>
         ))}
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์ภูมิภาค"
+        methodology="จัดกลุ่มเขตเลือกตั้งตาม<strong>ภูมิภาค</strong> แล้วคำนวณสัดส่วน 'เขตน่าสงสัย' ต่อ 'เขตทั้งหมด' ในแต่ละภูมิภาค — progress bar แสดง % เขตน่าสงสัย พร้อมแสดง breakdown พรรคที่ชนะในเขตน่าสงสัยของแต่ละภาค"
+        findings={[
+          `แบ่งเป็น <strong>${data.length}</strong> ภูมิภาค`,
+          `ภาคที่มี % เขตน่าสงสัยสูงที่สุด: <strong>${data.sort((a, b) => b.suspiciousPercent - a.suspiciousPercent)[0]?.region || '-'}</strong> (${data[0]?.suspiciousPercent || 0}%)`,
+          `ภาคที่มี % เขตน่าสงสัยต่ำที่สุด: <strong>${data.sort((a, b) => a.suspiciousPercent - b.suspiciousPercent)[0]?.region || '-'}</strong> (${data[0]?.suspiciousPercent || 0}%)`,
+        ]}
+        interpretation="ภูมิภาคที่มีเขตน่าสงสัยหนาแน่นอาจบ่งชี้<strong>รูปแบบเชิงภูมิศาสตร์</strong>ของความผิดปกติ — เช่น ภาคที่มีเครือข่ายอิทธิพลท้องถิ่นแข็งแกร่ง หรือภาคที่มีรูปแบบการเมืองเฉพาะตัว ควรดูร่วมกับข้อมูลเชิงลึกของแต่ละเขต"
+        limitation="การแบ่งภูมิภาคเป็นหน่วยใหญ่ อาจซ่อนความแตกต่างภายในภาค — เช่น ภาคอีสานมีจำนวนเขตมาก สัดส่วนจึงอาจถูกเฉลี่ย นอกจากนี้ boundary ของภูมิภาคอาจไม่ตรงกับ boundary ของอิทธิพลทางการเมือง"
+      />
     </div>
   )
 }

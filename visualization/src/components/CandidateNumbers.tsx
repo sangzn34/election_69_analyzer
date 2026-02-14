@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { Hash } from 'lucide-react'
 import type { CandidateNumberItem } from '../types'
+import AnalysisSummary from './AnalysisSummary'
 
 interface CustomTooltipProps {
   active?: boolean
@@ -119,6 +120,19 @@ export default function CandidateNumbers({ data }: Props) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์หมายเลขผู้สมัคร"
+        methodology="นับจำนวนเขตที่ผู้สมัครของแต่ละพรรคจับสลากได้<strong>แต่ละเบอร์</strong> แล้วดูว่าเบอร์ไหน<strong>ชนะ</strong>และ<strong>ไม่ชนะ</strong> — เปรียบเทียบ win rate ของแต่ละเบอร์ ถ้าเบอร์ต้นๆ (1-5) มี win rate สูงผิดปกติ อาจเกี่ยวข้องกับ 'ทฤษฎีเบอร์ตรง'"
+        findings={[
+          `กำลังดูพรรค: <strong>${parties.find(p => p.code === selectedParty)?.name || '-'}</strong>`,
+          `ลงสมัคร <strong>${stats.totalContests}</strong> เขต ชนะ <strong>${stats.totalWins}</strong> เขต (Win Rate <strong>${stats.winRate}%</strong>)`,
+          `คะแนนเฉลี่ยต่อเขต: <strong>${stats.avgVotes.toLocaleString()}</strong> คะแนน`,
+          `ดูกราฟด้านบน: เบอร์ที่มีแท่งสีเต็ม (ชนะ) มากกว่าสีเทา (ไม่ชนะ) = เบอร์ที่ทำผลงานดี`,
+        ]}
+        interpretation="ในระบบจับสลากที่ยุติธรรม แต่ละเบอร์ควรมี<strong>โอกาสชนะใกล้เคียงกัน</strong> — ถ้าเบอร์เฉพาะ (เช่น เบอร์ 1) ชนะมากผิดปกติ อาจเกิดจาก (1) เบอร์ต้นๆ ได้ priority effect ในบัตรเลือกตั้ง, (2) ผู้สมัครที่แข็งแกร่งบังเอิญจับได้เบอร์ต้นๆ, หรือ (3) มีกลไกที่ทำให้เบอร์บางเบอร์ได้เปรียบ"
+        limitation="การจับสลากเบอร์เป็นกระบวนการสุ่ม — ใน sample size ที่จำกัด อาจเห็น pattern ที่ไม่มีนัยสำคัญทางสถิติ ควรใช้ statistical test (เช่น chi-square) เพื่อยืนยันว่าความแตกต่างไม่ได้เกิดจาก chance"
+      />
     </div>
   )
 }

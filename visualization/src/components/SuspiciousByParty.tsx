@@ -6,6 +6,7 @@ import {
 import { PieChart as PieChartIcon, CircleDot } from 'lucide-react'
 import type { SuspiciousByPartyItem, NameToCodeMap } from '../types'
 import PartyLogo from './PartyLogo'
+import AnalysisSummary from './AnalysisSummary'
 
 const RADIAN = Math.PI / 180
 
@@ -94,6 +95,18 @@ export default function SuspiciousByParty({ data, nameToCodeMap }: Props) {
           )
         })}
       </div>
+
+      <AnalysisSummary
+        title="วิเคราะห์เขตน่าสงสัยแยกตามพรรค"
+        methodology="จัดกลุ่ม<strong>เขตที่มี ensemble score สูง (น่าสงสัย)</strong> ตามพรรค ส.ส. ผู้ชนะ — แสดงสัดส่วน 'เขตน่าสงสัย' ต่อ 'เขตที่ชนะทั้งหมด' ของแต่ละพรรค Pie chart แสดง % เขตน่าสงสัยเทียบกับเขตปกติ"
+        findings={[
+          `แสดง <strong>${data.length}</strong> พรรคที่มีเขตชนะ`,
+          `พรรคที่มี % เขตน่าสงสัยสูง ควรได้รับการตรวจสอบเพิ่มเติม`,
+          `สัดส่วน suspicious/total ที่สูงอาจบ่งชี้ว่าพรรคนั้นมี<strong>รูปแบบความผิดปกติที่เป็นระบบ</strong>`,
+        ]}
+        interpretation="พรรคที่มี % เขตน่าสงสัยสูง<strong>ไม่ได้หมายความว่าทุจริตทั้งพรรค</strong> — อาจมีปัจจัยเฉพาะพื้นที่ เช่น ฐานเสียงที่แข็งแกร่ง, เครือข่ายท้องถิ่น, หรือ demographic factors ที่ทำให้ตัวเลขดูผิดปกติในโมเดลทางสถิติ ผลลัพธ์ควรใช้เป็นจุดเริ่มต้นในการสอบสวน"
+        limitation="คำว่า 'น่าสงสัย' มาจาก ensemble score ซึ่งเป็นการรวมหลายทฤษฎี — threshold ที่ใช้แบ่ง 'น่าสงสัย' vs 'ปกติ' มีผลต่อจำนวนเขตที่แสดง ถ้าเปลี่ยน threshold ผลลัพธ์จะเปลี่ยน"
+      />
     </div>
   )
 }
