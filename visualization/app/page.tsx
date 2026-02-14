@@ -250,13 +250,13 @@ export default function HomePage() {
 
           {activeSection === 'overview' && (
             <>
-              <TopBenefitingParties data={data.targetPartyCounts} partyMeta={data.partyMeta} nameToCodeMap={nameToCodeMap} />
+              <TopBenefitingParties data={data.targetPartyCounts} vba={data.voteBuyingAnalysis} nameToCodeMap={nameToCodeMap} />
               <SuspiciousByParty data={data.suspiciousByParty} nameToCodeMap={nameToCodeMap} />
               <RegionBreakdown data={data.regionSummary} nameToCodeMap={nameToCodeMap} />
             </>
           )}
 
-          {activeSection === 'benefiting' && <TopBenefitingParties data={data.targetPartyCounts} partyMeta={data.partyMeta} nameToCodeMap={nameToCodeMap} />}
+          {activeSection === 'benefiting' && <TopBenefitingParties data={data.targetPartyCounts} vba={data.voteBuyingAnalysis} nameToCodeMap={nameToCodeMap} />}
           {activeSection === 'rank' && <RankDistribution data={data.rankDistribution} />}
           {activeSection === 'scatter' && <ScatterAnalysis data={data.scatterData} />}
           {activeSection === 'anomaly' && <VoteAnomaly data={data.voteAnomaly} />}
